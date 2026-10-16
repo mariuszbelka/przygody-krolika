@@ -3,7 +3,7 @@
 Pixel-artowa platformówka w **jednym pliku HTML**: bez instalacji i bez bibliotek, działa w przeglądarce na komputerze i telefonie.
 Bohaterowie mają prawdziwe pierwowzory: królika **Puszka** (biały, z grzywką i krótkimi brzoskwiniowymi uszkami) i kota **Persiego** (bury tygrysek z literą „M” na czole).
 
-### ▶ [Zagraj](https://mariuszbelka.github.io/przygody-krolika/)
+### ▶ [Zagraj](https://mariuszbelka.github.io/przygody-krolika/)  ·  🧩 [Przygoda 2: Sroka Złodziejka](https://mariuszbelka.github.io/przygody-krolika/przygoda2/)
 
 ![Menu](docs/menu.png)
 
@@ -65,3 +65,22 @@ Ranking chroni wyłącznie nieznajomość linku, więc nie jest zabezpieczony pr
 
 ## Uruchomienie lokalne
 Wystarczy otworzyć `index.html` w przeglądarce.
+
+## Przygoda 2: Sroka Złodziejka (`/przygoda2/`)
+Turowa gra logiczna: Puszek i Persi działają razem przeciw Sroce Szarlotce. Liczy się kombinowanie, a nie refleks.
+Przełączasz postacie, ruch można cofać, są podpowiedzi.
+
+| Puszek | Persi |
+|---|---|
+| wskakuje na 1 kratkę | wskakuje na 2 kratki |
+| kopie miękką ziemię | pcha skrzynki |
+| przechodzi przez nory | drapie liny |
+
+Obie postacie mogą wejść jedna na drugą, stanąć na płycie i przełączyć dźwignię.
+Gra ma 15 pokoi w 4 krainach (Ogród, Szopa, Piwnica, Wieża Sroki).
+
+**Sterowanie:** ← → ruch, Spacja akcja, Tab zmiana postaci, Z cofnij, R od nowa, H podpowiedź.
+
+Każdy pokój sprawdza solver BFS (`przygoda2/tools/solve.js`). Ten sam plik `rules.js` steruje grą i solverem.
+Solver wyznacza też liczbę ruchów „mistrza”: minimum +10%.
+`tools/check.js` sprawdza, czy skrzynki, nory i ziemia są w pokoju naprawdę potrzebne.
