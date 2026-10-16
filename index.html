@@ -218,6 +218,35 @@ canvas {
   transform:translateY(1px);
   box-shadow:inset 0 0 0 999px rgba(255,255,255,0.08);
 }
+/* Telefon poziomo: plansza na całą wysokość, przyciski nałożone na rogi */
+body.touchLandscape #shell { gap:0; }
+body.touchLandscape #mobileControls {
+  position:fixed; inset:0; display:block; width:auto; padding:0;
+  background:none; border:none; box-shadow:none; border-radius:0; pointer-events:none;
+  --b:clamp(54px, 19vh, 92px); --m:10px;
+}
+body.touchLandscape #mobileControls.hidden { display:none !important; }
+body.touchLandscape #mobilePadRow, body.touchLandscape #mobileUtilityRow { display:block; }
+body.touchLandscape .mobileBtn {
+  position:absolute; pointer-events:auto; border-radius:50%;
+  background:rgba(8,14,26,0.30); border:2px solid rgba(255,255,255,0.28);
+  color:rgba(255,255,255,0.92); font-size:clamp(13px, 3.4vh, 18px); line-height:1.05;
+  box-shadow:0 4px 14px rgba(0,0,0,0.25); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+}
+body.touchLandscape .mobileBtn.main { width:var(--b); height:var(--b); }
+body.touchLandscape #mobileLeftBtn { left:calc(var(--m) + env(safe-area-inset-left)); bottom:calc(var(--m) + env(safe-area-inset-bottom)); font-size:clamp(20px, 6vh, 30px); }
+body.touchLandscape #mobileRightBtn { left:calc(var(--m) * 2 + var(--b) + env(safe-area-inset-left)); bottom:calc(var(--m) + env(safe-area-inset-bottom)); font-size:clamp(20px, 6vh, 30px); }
+body.touchLandscape #mobileJumpBtn { width:calc(var(--b) * 1.2); height:calc(var(--b) * 1.2); right:calc(var(--m) + env(safe-area-inset-right)); bottom:calc(var(--m) + env(safe-area-inset-bottom)); background:rgba(70,160,60,0.45); border-color:rgba(140,230,120,0.65); }
+body.touchLandscape #mobileDownBtn { right:calc(var(--m) * 2 + var(--b) * 1.2 + env(safe-area-inset-right)); bottom:calc(var(--m) + env(safe-area-inset-bottom)); }
+body.touchLandscape #mobileShootBtn { right:calc(var(--m) + var(--b) * 0.1 + env(safe-area-inset-right)); bottom:calc(var(--m) * 2 + var(--b) * 1.2 + env(safe-area-inset-bottom)); }
+body.touchLandscape .mobileBtn.util {
+  left:calc(var(--m) + env(safe-area-inset-left)); width:auto; min-width:64px; height:30px; padding:0 10px;
+  border-radius:15px; font-size:12px; background:rgba(8,14,26,0.40);
+}
+body.touchLandscape #mobilePauseBtn { top:calc(50% - 64px); }
+body.touchLandscape #mobileFullscreenBtn { top:calc(50% - 26px); }
+body.touchLandscape #mobileMuteBtn { top:calc(50% + 12px); }
+body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,255,255,0.22); }
 .hidden { display:none !important; }
 </style>
 </head>
@@ -4776,11 +4805,23 @@ canvas {
     fitCanvas();
   });
 
+  const TOUCH_LABELS = {
+    normal: { mobileLeftBtn: '◀ LEWO', mobileRightBtn: 'PRAWO ▶', mobileShootBtn: 'BOBEK', mobileDownBtn: '▼ TUP', mobileJumpBtn: 'SKOK ▲' },
+    land: { mobileLeftBtn: '◀', mobileRightBtn: '▶', mobileShootBtn: 'BOBEK', mobileDownBtn: '▼<br>TUP', mobileJumpBtn: '▲<br>SKOK' }
+  };
+  let touchLandscapeMode = null;
   function fitCanvas() {
-    const margin = 12;
-    const touchExtra = SHOW_TOUCH_UI ? MOBILE_UI_H : 0;
+    const landscapeTouch = SHOW_TOUCH_UI && window.innerWidth > window.innerHeight;
+    if (landscapeTouch !== touchLandscapeMode) {
+      touchLandscapeMode = landscapeTouch;
+      document.body.classList.toggle('touchLandscape', landscapeTouch);
+      const labels = landscapeTouch ? TOUCH_LABELS.land : TOUCH_LABELS.normal;
+      for (const id in labels) { const el = document.getElementById(id); if (el) el.innerHTML = labels[id]; }
+    }
+    const margin = landscapeTouch ? 2 : 12;
+    const touchExtra = SHOW_TOUCH_UI && !landscapeTouch ? MOBILE_UI_H : 0;
     const scale = Math.min(
-      2.25,
+      landscapeTouch ? 4 : 2.25,
       (window.innerWidth - margin * 2) / BASE_W,
       (window.innerHeight - margin * 2) / (BASE_H + touchExtra)
     );
