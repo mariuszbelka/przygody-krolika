@@ -643,24 +643,31 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   };
   const SONG_FOR = [['a', 0], ['b', 0], ['c', -2], ['b', 5], ['a', -3], ['b', 2], ['c', 0], ['boss', 0]];
 
+  const MUSIC_LEVEL = 0.26;
   const audio = {
-    enabled: safeLoadBool(STORAGE.music, true),
+    enabled: safeLoadBool(STORAGE.music, true), // muzyka wł./wył.; efekty grają zawsze
     ctx: null,
     musicIndex: 0,
     musicFrames: 0,
+    last: Object.create(null),
     tune: [262, 330, 392, 330, 262, 330, 392, 494, 523, 494, 392, 330, 262, 262],
     ensure() {
-      if (!this.enabled) return null;
       if (this.ctx) return this.ctx;
       const AudioCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtor) return null;
       try {
         this.ctx = new AudioCtor();
         this.master = this.ctx.createGain();
-        this.master.gain.value = 0.75;
+        this.master.gain.value = 0.8;
         const compressor = this.ctx.createDynamicsCompressor();
         this.master.connect(compressor);
         compressor.connect(this.ctx.destination);
+        this.musicBus = this.ctx.createGain();
+        this.musicBus.gain.value = this.enabled ? MUSIC_LEVEL : 0;
+        this.musicBus.connect(this.master);
+        this.sfxBus = this.ctx.createGain();
+        this.sfxBus.gain.value = 1;
+        this.sfxBus.connect(this.master);
       } catch (error) {
         this.ctx = null;
         this.master = null;
@@ -674,8 +681,12 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         context.resume().catch(() => {});
       }
     },
-    tone(freq, dur, type = 'square', vol = 0.14, slide = 0, startOffset = 0) {
-      if (!this.enabled) return;
+    out(bus) {
+      if (bus === 'music') return this.musicBus || this.master;
+      return this.sfxBus || this.master;
+    },
+    tone(freq, dur, type = 'square', vol = 0.14, slide = 0, startOffset = 0, bus = 'sfx') {
+      if (bus === 'music' && !this.enabled) return;
       const context = this.ensure();
       if (!context) return;
       const osc = context.createOscillator();
@@ -683,69 +694,258 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       const now = context.currentTime + startOffset;
       osc.type = type;
       osc.connect(gain);
-      gain.connect(this.master || context.destination);
+      gain.connect(this.out(bus) || context.destination);
       osc.frequency.setValueAtTime(freq, now);
       if (slide) {
         osc.frequency.exponentialRampToValueAtTime(Math.max(24, slide), now + dur);
       }
-      gain.gain.setValueAtTime(vol, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), now + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
       osc.start(now);
-      osc.stop(now + dur);
+      osc.stop(now + dur + 0.02);
     },
-    cue(name) {
+    noise(dur, vol, type = 'bandpass', f0 = 1000, f1 = 0, startOffset = 0, q = 1, bus = 'sfx') {
+      if (bus === 'music' && !this.enabled) return;
+      const context = this.ensure();
+      if (!context) return;
+      if (!this.noiseBuf) {
+        const length = Math.floor(context.sampleRate * 1.0);
+        this.noiseBuf = context.createBuffer(1, length, context.sampleRate);
+        const data = this.noiseBuf.getChannelData(0);
+        for (let i = 0; i < length; i += 1) data[i] = Math.random() * 2 - 1;
+      }
+      const now = context.currentTime + startOffset;
+      const src = context.createBufferSource();
+      src.buffer = this.noiseBuf;
+      const filter = context.createBiquadFilter();
+      filter.type = type;
+      filter.Q.value = q;
+      filter.frequency.setValueAtTime(f0, now);
+      if (f1) filter.frequency.exponentialRampToValueAtTime(Math.max(30, f1), now + dur);
+      const gain = context.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), now + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.out(bus) || context.destination);
+      src.start(now, Math.random() * 0.4);
+      src.stop(now + dur + 0.02);
+    },
+    // ściszenie muzyki na chwilę, żeby efekt był wyraźny
+    duck(depth = 0.45, hold = 0.22) {
+      if (!this.musicBus || !this.enabled) return;
+      const now = this.ctx.currentTime;
+      const g = this.musicBus.gain;
+      g.cancelScheduledValues(now);
+      g.setValueAtTime(Math.max(0.0001, g.value), now);
+      g.linearRampToValueAtTime(MUSIC_LEVEL * depth, now + 0.03);
+      g.setTargetAtTime(MUSIC_LEVEL, now + hold, 0.18);
+    },
+    cue(name, opt = {}) {
       this.resume();
+      if (!this.ctx) return;
+      const nowMs = performance.now();
+      const gap = { step: 70, crack: 110, plop: 120, bubbles: 400, roll: 300, wind: 600, schwing: 250, collect: 25 }[name] || 0;
+      if (gap && nowMs - (this.last[name] || 0) < gap) return;
+      this.last[name] = nowMs;
+      const semi = (n) => Math.pow(2, n / 12);
       switch (name) {
-        case 'collect':
-          this.tone(660, 0.06, 'sine', 0.10, 880, 0);
-          this.tone(960, 0.10, 'triangle', 0.08, 1320, 0.03);
+        case 'collect': {
+          const k = semi(Math.min(12, Math.max(0, (opt.streak || 1) - 1)));
+          this.tone(660 * k, 0.06, 'sine', 0.11, 880 * k, 0);
+          this.tone(990 * k, 0.10, 'triangle', 0.08, 1320 * k, 0.03);
           break;
+        }
         case 'golden':
-          this.tone(784, 0.05, 'sine', 0.12, 988, 0);
-          this.tone(988, 0.08, 'triangle', 0.10, 1318, 0.04);
-          this.tone(1318, 0.12, 'sine', 0.08, 1568, 0.10);
+          this.duck(0.6, 0.2);
+          this.tone(784, 0.05, 'sine', 0.13, 988, 0);
+          this.tone(988, 0.08, 'triangle', 0.11, 1318, 0.04);
+          this.tone(1318, 0.14, 'sine', 0.09, 1568, 0.10);
+          break;
+        case 'diamond':
+          this.duck(0.4, 0.4);
+          [1047, 1319, 1568, 2093].forEach((f, i) => this.tone(f, 0.18, 'sine', 0.10, f * 1.01, i * 0.06));
+          this.tone(3136, 0.30, 'triangle', 0.03, 4186, 0.24);
+          break;
+        case 'heart':
+          this.duck(0.5, 0.3);
+          this.tone(523, 0.12, 'triangle', 0.13, 0, 0);
+          this.tone(784, 0.20, 'triangle', 0.12, 0, 0.10);
+          this.tone(1047, 0.22, 'sine', 0.06, 0, 0.10);
           break;
         case 'power':
-          this.tone(392, 0.08, 'triangle', 0.12, 523, 0);
-          this.tone(523, 0.08, 'sine', 0.11, 659, 0.05);
-          this.tone(659, 0.10, 'triangle', 0.09, 880, 0.12);
+          this.duck(0.4, 0.5);
+          this.tone(392, 0.08, 'triangle', 0.13, 523, 0);
+          this.tone(523, 0.08, 'sine', 0.12, 659, 0.06);
+          this.tone(659, 0.10, 'triangle', 0.11, 880, 0.12);
+          this.tone(880, 0.25, 'square', 0.05, 1760, 0.18);
           break;
         case 'jump':
-          this.tone(240, 0.05, 'sine', 0.10, 320, 0);
-          this.tone(320, 0.08, 'triangle', 0.09, 430, 0.02);
+          this.tone(280, 0.10, 'triangle', 0.12, 560, 0);
+          this.tone(560, 0.07, 'sine', 0.05, 840, 0.02);
+          break;
+        case 'djump':
+          this.tone(560, 0.12, 'sine', 0.10, 1120, 0);
+          this.noise(0.14, 0.05, 'highpass', 2500, 6000, 0, 0.7);
+          break;
+        case 'land': {
+          const v = Math.min(1, Math.max(0, ((opt.v || 0) - 3) / 9));
+          if (v <= 0.05) break;
+          this.noise(0.07 + v * 0.05, 0.05 + v * 0.10, 'lowpass', 500, 160, 0, 0.8);
+          this.tone(130, 0.08, 'sine', 0.06 + v * 0.10, 60, 0);
+          break;
+        }
+        case 'step':
+          this.noise(0.03, opt.soft ? 0.012 : 0.028, 'bandpass', opt.soft ? 2200 : 1500 + Math.random() * 600, 0, 0, 1.4);
           break;
         case 'shoot':
-          this.tone(180, 0.10, 'sawtooth', 0.22, 118, 0);
-          this.tone(132, 0.14, 'triangle', 0.18, 90, 0.02);
-          this.tone(94, 0.18, 'sine', 0.12, 74, 0.05);
+          this.noise(0.08, 0.10, 'bandpass', 900, 300, 0, 1.2);
+          this.tone(180, 0.10, 'sawtooth', 0.10, 118, 0);
+          this.tone(132, 0.12, 'triangle', 0.10, 90, 0.02);
+          break;
+        case 'empty':
+          this.tone(150, 0.05, 'square', 0.05, 120, 0);
+          this.tone(150, 0.05, 'square', 0.05, 120, 0.08);
+          break;
+        case 'splat':
+          this.noise(0.12, 0.14, 'bandpass', 700, 250, 0, 1);
+          this.tone(300, 0.08, 'triangle', 0.08, 150, 0);
           break;
         case 'meow':
-          this.tone(760, 0.11, 'triangle', 0.18, 980, 0);
-          this.tone(980, 0.12, 'square', 0.15, 720, 0.04);
-          this.tone(660, 0.15, 'sine', 0.11, 560, 0.09);
+          this.duck(0.5, 0.3);
+          this.tone(760, 0.11, 'triangle', 0.15, 980, 0);
+          this.tone(980, 0.12, 'square', 0.10, 720, 0.04);
+          this.tone(660, 0.15, 'sine', 0.10, 560, 0.09);
           break;
         case 'hurt':
-          this.tone(240, 0.14, 'triangle', 0.12, 190, 0);
-          this.tone(190, 0.18, 'sine', 0.08, 150, 0.07);
+          this.duck(0.3, 0.45);
+          this.noise(0.16, 0.14, 'bandpass', 600, 200, 0, 0.9);
+          this.tone(420, 0.10, 'square', 0.08, 300, 0);
+          this.tone(300, 0.22, 'triangle', 0.13, 150, 0.08);
+          break;
+        case 'fall':
+          this.duck(0.3, 0.7);
+          this.tone(1000, 0.6, 'sine', 0.12, 140, 0);
+          this.tone(1006, 0.6, 'triangle', 0.04, 145, 0);
+          this.noise(0.25, 0.12, 'lowpass', 400, 120, 0.55, 0.8);
           break;
         case 'stomp':
-          this.tone(170, 0.06, 'triangle', 0.12, 135, 0);
-          this.tone(135, 0.08, 'sine', 0.08, 115, 0.03);
+          this.duck(0.55, 0.2);
+          this.tone(560, 0.10, 'triangle', 0.13, 220, 0);
+          this.noise(0.06, 0.08, 'lowpass', 800, 200, 0, 0.8);
+          this.tone(200, 0.12, 'sine', 0.10, 140, 0.04);
+          break;
+        case 'bossHit':
+          this.duck(0.3, 0.6);
+          this.tone(520, 0.10, 'triangle', 0.14, 200, 0);
+          this.tone(170, 0.40, 'sawtooth', 0.09, 85, 0.06);
+          this.noise(0.25, 0.10, 'lowpass', 600, 120, 0.04, 0.8);
+          break;
+        case 'bossDown':
+          this.duck(0.2, 1.2);
+          [784, 659, 523, 392].forEach((f, i) => this.tone(f, 0.16, 'square', 0.07, f * 0.95, i * 0.11));
+          this.noise(0.6, 0.12, 'lowpass', 900, 80, 0.4, 0.7);
+          break;
+        case 'dive':
+          this.noise(0.16, 0.07, 'bandpass', 2400, 500, 0, 1.2);
+          this.tone(700, 0.14, 'sine', 0.05, 220, 0);
+          break;
+        case 'thump':
+          this.duck(0.25, 0.4);
+          this.tone(120, 0.24, 'sine', 0.36, 36, 0);
+          this.noise(0.22, 0.20, 'lowpass', 900, 90, 0, 0.8);
+          this.noise(0.10, 0.08, 'bandpass', 2400, 900, 0, 1);
+          break;
+        case 'boing':
+          this.duck(0.5, 0.3);
+          this.tone(170, 0.26, 'triangle', 0.16, 760, 0);
+          this.tone(340, 0.20, 'sine', 0.07, 1500, 0.02);
+          this.tone(760, 0.10, 'sine', 0.03, 600, 0.22);
+          break;
+        case 'bubbles':
+          for (let i = 0; i < 5; i += 1) this.tone(300 + Math.random() * 500, 0.06, 'sine', 0.035, 900 + Math.random() * 500, i * 0.09 + Math.random() * 0.03);
+          break;
+        case 'geyser':
+          this.duck(0.5, 0.35);
+          this.noise(0.45, 0.13, 'bandpass', 500, 3500, 0, 0.8);
+          this.tone(380, 0.30, 'sine', 0.07, 1000, 0);
+          break;
+        case 'creak':
+          this.tone(150, 0.30, 'sawtooth', 0.035, 112, 0);
+          this.tone(156, 0.30, 'triangle', 0.05, 118, 0.02);
+          this.noise(0.25, 0.04, 'bandpass', 380, 260, 0, 3);
+          break;
+        case 'crack':
+          [0, 0.07, 0.13].forEach((t) => this.noise(0.035, 0.07, 'bandpass', 2600 + Math.random() * 800, 0, t, 2));
+          break;
+        case 'logfall':
+          this.noise(0.4, 0.10, 'lowpass', 700, 120, 0, 0.8);
+          this.tone(220, 0.35, 'triangle', 0.08, 60, 0);
+          break;
+        case 'crumble':
+          this.duck(0.5, 0.3);
+          this.noise(0.30, 0.15, 'bandpass', 1300, 350, 0, 0.8);
+          [0.03, 0.09, 0.16, 0.22].forEach((t) => this.noise(0.03, 0.06, 'bandpass', 3000, 0, t, 2));
+          break;
+        case 'plop':
+          this.tone(520, 0.08, 'sine', 0.06, 260, 0);
+          break;
+        case 'bloop':
+          this.tone(320, 0.25, 'sine', 0.13, 80, 0);
+          this.cue('bubbles');
+          break;
+        case 'roll':
+          this.noise(0.5, 0.06, 'lowpass', 260, 140, 0, 0.8);
+          this.tone(70, 0.4, 'triangle', 0.06, 55, 0);
+          break;
+        case 'wind':
+          this.noise(0.9, 0.06, 'bandpass', 500, 1300, 0, 1.5);
+          this.noise(0.9, 0.03, 'bandpass', 1300, 600, 0.3, 2);
+          break;
+        case 'whistle':
+          this.tone(1500, 0.85, 'sine', 0.045, 520, 0);
+          break;
+        case 'yarnLand':
+          this.noise(0.12, 0.10, 'lowpass', 500, 150, 0, 0.8);
+          this.tone(160, 0.10, 'sine', 0.08, 90, 0);
+          break;
+        case 'schwing':
+          this.noise(0.08, 0.05, 'highpass', 4500, 7000, 0, 0.8);
+          this.tone(900, 0.06, 'square', 0.025, 1400, 0);
+          break;
+        case 'sneak':
+          this.tone(1200, 0.04, 'sine', 0.04, 1300, 0);
+          this.tone(1500, 0.05, 'sine', 0.04, 1600, 0.12);
+          break;
+        case 'checkpoint':
+          this.duck(0.4, 0.5);
+          [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.25, 'sine', 0.09, 0, i * 0.07));
+          this.tone(1568, 0.4, 'triangle', 0.04, 0, 0.28);
+          break;
+        case 'secret':
+          this.duck(0.2, 1.0);
+          [440, 523, 659, 880, 1047, 1319].forEach((f, i) => this.tone(f, 0.22, 'triangle', 0.09, 0, i * 0.08));
+          this.tone(2093, 0.5, 'sine', 0.05, 0, 0.5);
           break;
         case 'level':
-          this.tone(523, 0.10, 'square', 0.16, 0, 0);
-          this.tone(659, 0.10, 'square', 0.16, 0, 0.10);
-          this.tone(784, 0.10, 'square', 0.16, 0, 0.20);
-          this.tone(1047, 0.22, 'square', 0.16, 0, 0.30);
+          this.duck(0.15, 1.2);
+          this.tone(523, 0.10, 'square', 0.14, 0, 0);
+          this.tone(659, 0.10, 'square', 0.14, 0, 0.10);
+          this.tone(784, 0.10, 'square', 0.14, 0, 0.20);
+          this.tone(1047, 0.30, 'square', 0.14, 0, 0.30);
           break;
         case 'over':
-          this.tone(330, 0.15, 'sawtooth', 0.22, 220, 0);
-          this.tone(220, 0.20, 'sawtooth', 0.18, 110, 0.15);
-          this.tone(110, 0.40, 'sawtooth', 0.16, 70, 0.34);
+          this.duck(0.1, 1.5);
+          this.tone(330, 0.15, 'sawtooth', 0.18, 220, 0);
+          this.tone(220, 0.20, 'sawtooth', 0.15, 110, 0.15);
+          this.tone(110, 0.40, 'sawtooth', 0.13, 70, 0.34);
           break;
         case 'win':
+          this.duck(0.1, 1.5);
           [523, 659, 784, 880, 1047].forEach((freq, index) => {
-            this.tone(freq, 0.14, 'square', 0.16, 0, index * 0.09);
+            this.tone(freq, 0.16, 'square', 0.14, 0, index * 0.09);
           });
           break;
       }
@@ -753,41 +953,12 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     drum(kind) {
       const context = this.ensure();
       if (!context || !this.enabled) return;
-      const now = context.currentTime;
-      const out = this.master || context.destination;
       if (kind === 'k') {
-        const osc = context.createOscillator();
-        const gain = context.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.exponentialRampToValueAtTime(42, now + 0.12);
-        gain.gain.setValueAtTime(0.32, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-        osc.connect(gain);
-        gain.connect(out);
-        osc.start(now);
-        osc.stop(now + 0.18);
+        this.tone(150, 0.16, 'sine', 0.30, 42, 0, 'music');
         return;
       }
-      if (!this.noiseBuf) {
-        const length = Math.floor(context.sampleRate * 0.3);
-        this.noiseBuf = context.createBuffer(1, length, context.sampleRate);
-        const data = this.noiseBuf.getChannelData(0);
-        for (let i = 0; i < length; i += 1) data[i] = Math.random() * 2 - 1;
-      }
-      const src = context.createBufferSource();
-      src.buffer = this.noiseBuf;
-      const filter = context.createBiquadFilter();
-      filter.type = kind === 'h' ? 'highpass' : 'bandpass';
-      filter.frequency.value = kind === 'h' ? 7000 : 1800;
-      const gain = context.createGain();
-      gain.gain.setValueAtTime(kind === 'h' ? 0.045 : 0.11, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + (kind === 'h' ? 0.04 : 0.13));
-      src.connect(filter);
-      filter.connect(gain);
-      gain.connect(out);
-      src.start(now);
-      src.stop(now + 0.15);
+      if (kind === 'h') this.noise(0.04, 0.045, 'highpass', 7000, 0, 0, 0.7, 'music');
+      else this.noise(0.13, 0.11, 'bandpass', 1800, 0, 0, 1, 'music');
     },
     resetMusic() {
       this.musicIndex = 0;
@@ -811,10 +982,10 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       const lead = song.lead[index];
       const bass = song.bass[index];
       if (lead) {
-        this.tone(midiFreq(lead + transpose), step / 60 * 0.95, 'square', 0.026);
-        this.tone(midiFreq(lead + 12 + transpose), step / 60 * 0.5, 'sine', 0.012);
+        this.tone(midiFreq(lead + transpose), step / 60 * 0.95, 'square', 0.05, 0, 0, 'music');
+        this.tone(midiFreq(lead + 12 + transpose), step / 60 * 0.5, 'sine', 0.024, 0, 0, 'music');
       }
-      if (bass) this.tone(midiFreq(bass + transpose), step / 60 * 1.9, 'triangle', 0.075);
+      if (bass) this.tone(midiFreq(bass + transpose), step / 60 * 1.9, 'triangle', 0.15, 0, 0, 'music');
       if (song.drums) {
         const beat = song.drums[index % song.drums.length];
         if (beat !== '.') this.drum(beat);
@@ -824,10 +995,13 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     toggle() {
       this.enabled = !this.enabled;
       safeSave(STORAGE.music, this.enabled ? '1' : '0');
-      if (this.enabled) {
-        this.resume();
-        this.cue('collect');
+      this.resume();
+      if (this.musicBus) {
+        const now = this.ctx.currentTime;
+        this.musicBus.gain.cancelScheduledValues(now);
+        this.musicBus.gain.setTargetAtTime(this.enabled ? MUSIC_LEVEL : 0, now, 0.05);
       }
+      this.cue('collect');
       updateFullscreenUi();
     }
   };
@@ -3072,11 +3246,12 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
             p.fade = 0;
           }
         } else if (stood) {
+          if (p.sink < 0.5) audio.cue('plop');
           p.sink += 0.42;
           if (p.sink >= 28) {
             p.gone = true;
             p.ptimer = 80;
-            audio.tone(240, 0.2, 'sine', 0.12, 90, 0);
+            audio.cue('bloop');
             for (let k = 0; k < 12; k += 1) game.particles.push({ x: p.x + p.w / 2 + (Math.random() - 0.5) * p.w, y: p.y, vx: (Math.random() - 0.5) * 3, vy: -2 - Math.random() * 3, color: k % 2 ? '#BFE6FF' : '#FFFFFF', life: 24, size: 2 });
           }
         } else {
@@ -3091,7 +3266,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
           if (stood) {
             p.pstate = 'shake';
             p.ptimer = p.kind === 'log' ? 40 : 30;
-            audio.tone(p.kind === 'log' ? 160 : 260, 0.08, 'square', 0.05, 120, 0);
+            audio.cue(p.kind === 'log' ? 'creak' : 'crack');
           }
           break;
         case 'shake':
@@ -3101,11 +3276,12 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
               p.pstate = 'gone';
               p.gone = true;
               p.ptimer = 210;
-              audio.drum('s');
+              audio.cue('crumble');
               for (let k = 0; k < 16; k += 1) game.particles.push({ x: p.x + Math.random() * p.w, y: p.y + Math.random() * 20, vx: (Math.random() - 0.5) * 2, vy: -1 - Math.random() * 2, color: k % 3 ? theme().stone : theme().dirtDark, life: 40, size: 4 });
             } else {
               p.pstate = 'fall';
               p.pvy = 0;
+              audio.cue('logfall');
             }
           }
           break;
@@ -3166,7 +3342,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       player.y = capTop - PLAYER_H;
       launchPlayer(pounded ? -18 : -15.8);
       b.squash = 12;
-      audio.tone(260, 0.18, 'triangle', 0.16, 820, 0);
+      audio.cue('boing');
       for (let k = 0; k < 10; k += 1) game.particles.push({ x: b.x + (Math.random() - 0.5) * 30, y: capTop, vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 2, color: k % 2 ? '#FFFFFF' : '#FF8A78', life: 20, size: 2 });
       if (!game.guide.bounceShown) {
         game.guide.bounceShown = true;
@@ -3194,7 +3370,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       s.timer -= 1;
       if (s.timer > 0) continue;
       s.timer = s.interval;
-      if (Math.abs(s.x - (game.cameraX + BASE_W / 2)) < BASE_W * 1.1) spawnRoller(s.x - 14, s.y - 28, s.dir * 2.3);
+      if (Math.abs(s.x - (game.cameraX + BASE_W / 2)) < BASE_W * 1.1) { spawnRoller(s.x - 14, s.y - 28, s.dir * 2.3); if (Math.abs(s.x - (game.cameraX + BASE_W / 2)) < BASE_W * 0.7) audio.cue('roll'); }
     }
     const player = game.player;
     game.rollers = game.rollers.filter((r) => {
@@ -3211,6 +3387,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
           if (r.kind === 'yarn' && r.vy > 4) {
             r.vx = (Math.random() < 0.5 ? -1 : 1) * 1.8;
             triggerShake(2, 6);
+            audio.cue('yarnLand');
             emitDust(r.x + 14, p.y - 2, 6);
           }
           r.y = p.y - 28;
@@ -3253,7 +3430,10 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     const player = game.player;
     const cx = player.x + PLAYER_W / 2;
     for (const w of game.winds) {
-      if (cx > w.x && cx < w.x + w.w) {
+      const inZone = cx > w.x && cx < w.x + w.w;
+      if (inZone && !w.inside) audio.cue('wind');
+      w.inside = inZone;
+      if (inZone) {
         player.x = clamp(player.x + w.force, 0, game.level.worldWidth - PLAYER_W);
         if (!w.shown) {
           w.shown = true;
@@ -3303,14 +3483,14 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     for (const g of game.geysers) {
       if (g.cool > 0) g.cool -= 1;
       const st = geyserState(g);
+      if (st.state === 'warn' && st.k % 24 === 0 && Math.abs(g.x - cx) < 420) audio.cue('bubbles');
       if (st.state !== 'active' || st.k < 4 || g.cool > 0) continue;
       const height = Math.min(180, st.k * 22);
       const bottom = player.y + PLAYER_H;
       if (Math.abs(cx - g.x) < 22 && bottom > g.y - height - 6 && bottom <= g.y + 2) {
         launchPlayer(-15.8);
         g.cool = 34;
-        audio.drum('h');
-        audio.tone(400, 0.25, 'sine', 0.08, 900, 0);
+        audio.cue('geyser');
       }
     }
   }
@@ -3370,6 +3550,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     const player = game.player;
     const groundY = BASE_H - TILE;
     for (const s of game.timedSpikes) {
+      if ((game.frame + s.offset) % s.period === 0 && Math.abs(s.x - player.x) < 320) audio.cue('schwing');
       if (timedSpikeOffset(s) > 6) continue;
       if (overlap(player.x + 6, player.y + 8, PLAYER_W - 12, PLAYER_H - 10, s.x + 2, groundY - 14, 20, 14)) {
         damagePlayer('kolce');
@@ -3408,6 +3589,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       game.bossDropTimer = rage >= 2 ? 64 : 104;
       const px = game.player.x + PLAYER_W / 2 + (Math.random() - 0.5) * 220;
       game.drops.push({ x: clamp(px, 120, game.level.worldWidth - 120), t: 54 });
+      audio.cue('whistle');
       if (!game.guide.yarnShown) {
         game.guide.yarnShown = true;
         setNotice('Wielki Persi zrzuca kłębki! Uciekaj spod cieni.', '#FFC8E0', 180, 3, 'UWAGA');
@@ -3659,9 +3841,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     triggerShake(7, 16);
     game.hitStop = 5;
     game.guide.poundDone = true;
-    audio.tone(120, 0.2, 'sine', 0.38, 38, 0);
-    audio.drum('s');
-    audio.drum('k');
+    audio.cue('thump');
     if (!game.shockwaves) game.shockwaves = [];
     game.shockwaves.push({ x: cx, y: by, r: 8, life: 18 });
     for (let index = 0; index < 18; index += 1) {
@@ -3725,7 +3905,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       p.vy = 12;
       p.vx = 0;
       game.hitStop = 2;
-      audio.tone(620, 0.12, 'triangle', 0.08, 180, 0);
+      audio.cue('dive');
       return;
     }
     if (down && p.onGround) {
@@ -5355,7 +5535,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         break;
       case 'diamond':
         points = 100;
-        audio.cue('golden');
+        audio.cue('diamond');
         break;
       case 'lettuce':
         points = 75;
@@ -5365,7 +5545,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       case 'heart':
         if (game.lives < MAX_LIVES) {
           game.lives += 1;
-          audio.cue('collect');
+          audio.cue('heart');
           return { kind, points: 0, gavePower: false };
         }
         points = 25;
@@ -5410,7 +5590,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     game.lives -= 1;
     if (game.stats) game.stats.heartsLost += 1;
     game.hitStop = 6;
-    audio.cue('hurt');
+    audio.cue(kind === 'pit' ? 'fall' : 'hurt');
     setFlash('rgba(255,90,90,0.26)', 0.26);
     triggerShake(kind === 'pit' ? 7 : 5, kind === 'pit' ? 14 : 12);
     emitSpark(player.x + PLAYER_W / 2, player.y + PLAYER_H / 2, '#FF4444', 12);
@@ -5465,11 +5645,11 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         const angle = Math.PI * 2 * index / 12;
         game.particles.push({ x: cx, y: cy, vx: Math.cos(angle) * 2.6, vy: Math.sin(angle) * 1.1, color: '#FFFFFF', life: 16, size: 3 });
       }
-      audio.tone(520, 0.06, 'sine', 0.08, 780, 0);
+      audio.cue('djump');
     } else {
       emitDust(player.x + PLAYER_W / 2, player.y + PLAYER_H - 6, 7);
+      audio.cue('jump');
     }
-    audio.cue('jump');
     game.guide.jumpDone = true;
     return true;
   }
@@ -5477,6 +5657,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   function fireBobek() {
     if (game.scene !== 'PLAYING') return false;
     if (game.ammo <= 0) {
+      audio.cue('empty');
       setNotice('Brak bobków – zbieraj marchewki.', '#FFE0B8', 120, 2, 'PUSTO');
       return false;
     }
@@ -5592,6 +5773,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     }
 
     if (!wasOnGround && player.onGround) {
+      audio.cue('land', { v: previousVy });
       player.squash = clamp(previousVy * 0.018, 0.08, 0.18);
       emitDust(player.x + PLAYER_W / 2, player.y + PLAYER_H - 4, 9);
     }
@@ -5606,6 +5788,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       if (player.walkTick >= 7) {
         player.walkTick = 0;
         player.walkFrame ^= 1;
+        audio.cue('step', { soft: !!player.sneaking });
       }
     } else {
       player.walkTick = 0;
@@ -5839,7 +6022,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     player.stompChain = (player.stompChain || 0) + 1;
     const multiplier = Math.min(4, player.stompChain);
     game.hitStop = enemy.boss ? 8 : 4;
-    audio.cue('stomp');
+    audio.cue(enemy.boss ? 'bossHit' : 'stomp');
     triggerShake(enemy.boss ? 6 : 3, 8);
     emitSpark(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, color, enemy.boss ? 16 : 12);
     popup(enemy.x - game.cameraX + enemy.w / 2, enemy.y - 8, multiplier > 1 ? `${popupText} x${multiplier}` : popupText, color);
@@ -5868,6 +6051,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       popup(enemy.x - game.cameraX + enemy.w / 2, enemy.y - 24, 'BOSS +500!', '#FFD700');
       emitSpark(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#CC66FF', 26);
       setFlash('rgba(255,240,180,0.35)', 0.35);
+      audio.cue('bossDown');
       setNotice('Wielki Persi odpuścił! Portal jest otwarty.', '#FFE082', 220, 4, 'BRAWO');
     }
   }
@@ -5893,6 +6077,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
             game.score += 50;
             saveHiScore();
             popup(enemy.x - game.cameraX + enemy.w / 2, enemy.y - 18, 'CICHUTKO +50', '#D8CCFF');
+            audio.cue('sneak');
           }
           continue;
         }
@@ -5957,6 +6142,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
           enemy.poopTimer = enemy.boss ? 140 : 180;
           enemy.hitPause = 12;
           game.guide.enemyResolved = true;
+          audio.cue('splat');
           audio.cue('meow');
           emitSpark(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#FFD95A', 10);
           popup(enemy.x - game.cameraX + enemy.w / 2, enemy.y - 8, 'BOBEK!', '#FFF2A8');
@@ -5981,7 +6167,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         const golden = item.kind === 'golden';
         points = golden ? 50 : 10;
         game.ammo = Math.min(MAX_AMMO, game.ammo + (golden ? 2 : 1));
-        audio.cue(golden ? 'golden' : 'collect');
+        audio.cue(golden ? 'golden' : 'collect', { streak: game.pickupStreakTimer > 0 ? game.pickupStreak + 1 : 1 });
         emitSpark(cx, cy, golden ? '#FFD700' : '#FFE680', golden ? 14 : 8);
         if (stats) stats.carrots += 1;
         game.pickupStreak = game.pickupStreakTimer > 0 ? game.pickupStreak + 1 : 1;
@@ -5999,7 +6185,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       }
       case 'diamond':
         points = 100;
-        audio.cue('golden');
+        audio.cue('diamond');
         emitSpark(cx, cy, '#67B8FF', 16);
         if (stats) {
           stats.diamonds += 1;
@@ -6021,7 +6207,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       case 'heart':
         if (game.lives < MAX_LIVES) {
           game.lives += 1;
-          audio.cue('collect');
+          audio.cue('heart');
           emitSpark(cx, cy, '#FF6666', 10);
           popup(cx - game.cameraX, item.y, '+1 SERCE', '#FF6666');
           return;
@@ -6077,7 +6263,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       game.guide.checkpointResolved = true;
       game.respawnX = game.checkpoint.respawnX || game.checkpoint.x - 12;
       game.respawnY = game.checkpoint.respawnY || (game.checkpoint.y + TILE - PLAYER_H);
-      audio.cue('golden');
+      audio.cue('checkpoint');
       emitSpark(game.checkpoint.x + 8, game.checkpoint.y + 10, '#FFD700', 16);
       popup(game.checkpoint.x - game.cameraX + 6, game.checkpoint.y - 12, 'CHECKPOINT!', '#FFD700');
       setNotice('Flaga zapamiętała postęp.', '#FFD700', 170, 3, 'CHECKPOINT');
@@ -6092,8 +6278,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       secret.found = true;
       game.guide.secretResolved = true;
       if (game.stats) game.stats.secrets += 1;
-      audio.cue('golden');
-      audio.cue('level');
+      audio.cue('secret');
       triggerShake(5, 14);
       game.hitStop = 6;
       setFlash('rgba(255,230,130,0.24)', 0.24);
