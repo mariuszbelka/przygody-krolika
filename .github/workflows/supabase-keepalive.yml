@@ -1,0 +1,18 @@
+name: Podtrzymanie bazy rankingu
+# Darmowy Supabase usypia projekt po 7 dniach bez ruchu – to zapytanie co 3 dni go budzi.
+on:
+  schedule:
+    - cron: '17 6 */3 * *'
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Zapytanie do tabeli scores
+        run: |
+          URL=$(grep -o "SUPABASE_URL = '[^']*'" index.html | cut -d"'" -f2 || true)
+          if [ -z "$URL" ]; then curl -s -o index.html "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/index.html"; URL=$(grep -o "SUPABASE_URL = '[^']*'" index.html | cut -d"'" -f2); fi
+          KEY=$(grep -o "SUPABASE_PUBLISHABLE_KEY = '[^']*'" index.html | cut -d"'" -f2)
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/scores?select=score&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+          echo "HTTP $code"
+          test "$code" = "200"
