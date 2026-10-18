@@ -1,7 +1,7 @@
 //@@ drawEnemies
   function drawEnemies() {
     for (const enemy of game.enemies) {
-      if (!enemy.pooped && enemy.hitPause > 0 && Math.floor(enemy.hitPause / 3) % 2 === 0) continue;
+      if (!enemy.pooped && (enemy.hitPause > 0 || enemy.counter) && Math.floor(game.frame / 3) % 2 === 0) continue;
       const hopper = enemy.kind === 'hopper';
       const grounded = enemy.standingPlatform >= 0;
       const bossWarn = enemy.boss && enemy.ai === 'telegraph' && !enemy.pooped;
@@ -98,5 +98,86 @@
       const frame = Math.floor(r.rot * 4 / Math.PI) % 4;
       const art = MECH_ART.get(`${r.kind}${(frame + 4) % 4}`);
       ctx.drawImage(art, snap(x - 2), snap(r.y - 2), art.width * ART, art.height * ART);
+    }
+  }
+//@@ updateBossAI
+  function updateBossAI(enemy, grounded) {
+    const player = game.player;
+    const rage = enemy.maxHp - enemy.hp;
+    if (enemy.counter && enemy.ai !== 'leap' && enemy.ai !== 'telegraph') enemy.counter = false;
+    if (enemy.counter) enemy.pooped = false;
+    const phase = enemy.hp > 4 ? 1 : enemy.hp > 2 ? 2 : 3;
+    if (enemy.lastPhase !== phase) {
+      if (enemy.lastPhase) setNotice(phase === 2 ? 'Król się złości! Fale przy lądowaniu – podskocz nad nimi!' : 'Ostatnia faza! Król przywołuje muchomorki.', '#FFB5B5', 220, 4, `FAZA ${phase}`);
+      enemy.lastPhase = phase;
+    }
+    const playerCenter = player.x + PLAYER_W / 2;
+    const bossCenter = enemy.x + enemy.w / 2;
+    const toward = playerCenter < bossCenter ? -1 : 1;
+    enemy.aiTimer -= 1;
+    switch (enemy.ai) {
+      case 'patrol': {
+        const speed = enemy.vx + rage * 0.22;
+        enemy.x += enemy.facingLeft ? -speed : speed;
+        if (enemy.aiTimer <= 0 && grounded && Math.abs(playerCenter - bossCenter) < 600) {
+          enemy.ai = 'telegraph';
+          enemy.aiTimer = Math.max(26, 50 - rage * 5);
+          enemy.facingLeft = toward < 0;
+          enemy.chargeDir = toward;
+          audio.cue('meow');
+          if (phase >= 2 && Math.random() < 0.5) bossVolley(enemy);
+        }
+        break;
+      }
+      case 'telegraph':
+        if (enemy.aiTimer <= 0) {
+          enemy.counter = false;
+          if (phase === 3 && Math.random() < 0.35) bossSummon(enemy);
+          if (rage >= 1 && Math.random() < (phase >= 2 ? 0.55 : 0.4)) {
+            enemy.ai = 'leap';
+            enemy.vy = -10.5 - (phase === 3 ? 1.2 : 0);
+            enemy.airborne = true;
+            enemy.leapVx = toward * (2.3 + rage * 0.35);
+            enemy.facingLeft = toward < 0;
+            enemy.leapsLeft = phase === 3 ? 1 : 0;
+          } else {
+            enemy.ai = 'charge';
+            enemy.aiTimer = 90;
+          }
+        }
+        break;
+      case 'charge': {
+        enemy.x += enemy.chargeDir * (3.3 + rage * 0.45);
+        if (game.frame % 3 === 0) emitDust(enemy.x + (enemy.chargeDir > 0 ? 0 : enemy.w), enemy.y + enemy.h - 4, 2);
+        const hitWall = enemy.x <= enemy.minX || enemy.x + enemy.w >= enemy.maxX;
+        if (hitWall || enemy.aiTimer <= 0) {
+          enemy.ai = 'recover';
+          enemy.aiTimer = phase === 1 ? 54 : 40;
+          if (hitWall) { triggerShake(4, 8); if (phase >= 2) bossShockwave(enemy); }
+        }
+        break;
+      }
+      case 'leap':
+        enemy.x += enemy.leapVx;
+        if (enemy.aiTimer < -200) {
+          enemy.ai = 'recover';
+          enemy.aiTimer = 40;
+        }
+        break;
+      default:
+        if (enemy.aiTimer <= 0) {
+          enemy.ai = 'patrol';
+          enemy.aiTimer = Math.max(50, 130 - rage * 16);
+          enemy.facingLeft = toward < 0;
+        }
+        break;
+    }
+    if (enemy.x <= enemy.minX) {
+      enemy.x = enemy.minX;
+      enemy.facingLeft = false;
+    }
+    if (enemy.x + enemy.w >= enemy.maxX) {
+      enemy.x = enemy.maxX - enemy.w;
+      enemy.facingLeft = true;
     }
   }

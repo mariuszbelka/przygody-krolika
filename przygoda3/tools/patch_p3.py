@@ -32,7 +32,7 @@ src = sub1(src, "  function theme() {\n", """  Object.assign(THEMES, {
 src = sub1(src, "  const SONG_FOR = [['a', 0], ['b', 0], ['c', -2], ['b', 5], ['a', -3], ['b', 2], ['c', 0], ['boss', 0]];",
            "  const SONG_FOR = [['a', 2], ['b', 0], ['c', -2], ['b', 7], ['boss', 0]];")
 src = sub1(src, "  const MAP_NODES = [[96, 392], [206, 330], [318, 394], [420, 312], [512, 384], [612, 300], [700, 360], [724, 192]];",
-           "  const MAP_NODES = [[110, 392], [250, 330], [400, 388], [550, 312], [700, 230]];")
+           "  const MAP_NODES = [[90, 404], [200, 330], [330, 394], [452, 314], [566, 252]];")
 src = sub1(src, "    hi: 'PuszekV2Hi',", "    hi: 'PuszekP3Hi',")
 src = sub1(src, "    stars: 'PuszekV3Progress'", "    stars: 'PuszekP3Progress'")
 
@@ -181,8 +181,82 @@ src = sub1(src, """    drawArtFootprint({ c: rabbit, ox: RABBIT_CANVAS.ox, oy: R
       drawArtFootprint({ c: rabbit, ox: RABBIT_CANVAS.ox, oy: RABBIT_CANVAS.oy, fw: 24, fh: 24 }, snap(px - 18), snap(py - 40), 36, 36, tx < fx);
     }""")
 
+
+# Grzybowy Król: twardszy
+src = sub1(src, "    const hp = spawn.boss ? 3 : 1;", "    const hp = spawn.boss ? 6 : 1;")
+src = sub1(src, "          enemy.poopTimer = enemy.boss ? 140 : 180;", "          enemy.poopTimer = enemy.boss ? 75 : 180;")
+src = sub1(src, """          if (enemy.ai === 'leap') {
+            enemy.ai = 'recover';
+            enemy.aiTimer = 46;
+          }""", """          if (enemy.ai === 'leap') {
+            if (enemy.hp <= 4) bossShockwave(enemy);
+            if (enemy.leapsLeft > 0) {
+              enemy.leapsLeft -= 1;
+              enemy.vy = -9.5;
+              enemy.airborne = true;
+              enemy.leapVx = (game.player.x < enemy.x ? -1 : 1) * 3;
+            } else if (enemy.counter) {
+              // po kontrze: od razu szykuje atak, nietykalny aż do szarży
+              enemy.ai = 'telegraph';
+              enemy.aiTimer = enemy.hp <= 2 ? 18 : 24;
+              enemy.chargeDir = game.player.x + PLAYER_W / 2 < enemy.x + enemy.w / 2 ? -1 : 1;
+              enemy.facingLeft = enemy.chargeDir < 0;
+            } else {
+              enemy.ai = 'recover';
+              enemy.aiTimer = 46;
+            }
+          }""")
+src = sub1(src, "      if (player.rolling) {\n        player.vy = -7;", """      if (enemy.boss && player.rolling) {
+        player.vx = player.x < enemy.x ? -5 : 5;
+        player.vy = -6;
+        continue;
+      }
+
+      if (player.rolling) {
+        player.vy = -7;""")
+src = sub1(src, "    drawP3Front();\n", "    drawP3Front();\n    drawBossExtras();\n")
+src = src.replace("    } else if (kind === 'jez') {", """    } else if (kind === 'fala') {
+      setNotice('Fala uderzeniowa! Podskocz, gdy sunie po ziemi.', '#FFBBBB', 150, 3, 'AU!');
+    } else if (kind === 'jez') {""", 1)
+src = src.replace("'Gdy pojawi się „!”, szykuje szarżę. Przeskocz go i wskocz mu na głowę 3 razy.'", "'Gdy pojawi się „!”, szykuje szarżę. Przeskocz go i skacz mu na kapelusz – 6 razy!'")
+
+
+for name, code in sections('p3_map.js'):
+    src = replace_func(src, name, code)
+src = sub1(src, "    ctx.drawImage(mapArt, 0, 0, BASE_W, BASE_H);\n", """    ctx.drawImage(mapArt, 0, 0, BASE_W, BASE_H);
+    ctx.save();
+    ctx.textAlign = 'center';
+    drawOutlinedText('DRZEWO LICHA', 704, 262, 'bold 15px "Fredoka", sans-serif', '#E8C8FF', '#1A1030', 4);
+    drawOutlinedText('wkrótce', 704, 280, 'bold 12px "Fredoka", sans-serif', '#C8B0E8', '#1A1030', 3);
+    drawOutlinedText('MOKRADŁA I MGŁA', 700, 342, 'bold 15px "Fredoka", sans-serif', '#D8F0EC', '#10302E', 4);
+    drawOutlinedText('wkrótce', 700, 360, 'bold 12px "Fredoka", sans-serif', '#B8D8D4', '#10302E', 3);
+    drawOutlinedText('POLANA GRZYBÓW', 130, 300, 'bold 15px "Fredoka", sans-serif', '#FFF2B0', '#2A3A10', 4);
+    ctx.restore();
+""")
+
+
+src = sub1(src, """    enemy.hitPause = enemy.boss ? 56 : 44;
+    enemy.pooped = false;
+    if (enemy.boss) {
+      enemy.ai = 'recover';
+      enemy.aiTimer = 24;
+    }""", """    enemy.hitPause = enemy.boss ? 10 : 44;
+    enemy.pooped = false;
+    if (enemy.boss) {
+      // kontra: odskok od gracza, w 2. i 3. fazie z falą przy lądowaniu
+      enemy.ai = 'leap';
+      enemy.aiTimer = 0;
+      enemy.counter = true;
+      enemy.vy = enemy.airborne ? Math.max(enemy.vy, -3) : -10;
+      enemy.airborne = true;
+      enemy.leapVx = (game.player.x + PLAYER_W / 2 < enemy.x + enemy.w / 2 ? 1 : -1) * 5.2;
+      enemy.facingLeft = enemy.leapVx < 0;
+      enemy.leapsLeft = 0;
+    }""")
+
 # teksty
 REPL = [
+    ("'Kłębek spadł na głowę! Uciekaj spod cieni.'", "'Zarodnik trafił! Uciekaj spod cieni i przed salwami.'"),
     ("const title = 'PUSZEK I MARCHEWKI';", "const title = 'PUSZEK I PERSI';"),
     ("drawPixelText('kontra Persi',", "drawPixelText('Zaczarowany Las',"),
     ("'Wielki Persi zrzuca kłębki! Uciekaj spod cieni.'", "'Grzybowy Król sypie zarodnikami! Uciekaj spod cieni.'"),
@@ -224,5 +298,19 @@ for old, new in REPL:
         print('BRAK:', old[:70]); continue
     src = src.replace(old, new)
 
+# --- kontra bossa: nietykalny aż do lądowania (anty-żonglerka w powietrzu) ---
+src = sub1(src, """      if (enemy.hitPause > 0 && !enemy.pooped) continue;
+      if (!overlap(player.x + 4, player.y + 4, PLAYER_W - 8, PLAYER_H - 8, enemy.x, enemy.y, enemy.w, enemy.h)) continue;
+""", """      if (enemy.hitPause > 0 && !enemy.pooped) continue;
+      if (!overlap(player.x + 4, player.y + 4, PLAYER_W - 8, PLAYER_H - 8, enemy.x, enemy.y, enemy.w, enemy.h)) continue;
+      if (enemy.boss && enemy.counter) {
+        player.vy = Math.min(player.vy, -6);
+        player.vx = player.x + PLAYER_W / 2 < enemy.x + enemy.w / 2 ? -4 : 4;
+        continue;
+      }
+""")
+src = sub1(src, "WIELKI PERSI POKONANY!", "KRÓL ODCZAROWANY!")
+src = sub1(src, "'NA PERSIEGO',", "'NA WROGÓW',")
 open(OUT, 'w', encoding='utf-8').write(src)
 print('ok', len(src))
+

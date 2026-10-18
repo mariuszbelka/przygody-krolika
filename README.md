@@ -102,11 +102,14 @@ Leśne Licho zaczarowało las. Pokonani wrogowie zostają **odczarowani**.
 | jeże | nie wolno skakać im na grzbiet |
 | wiewiórki | rzucają szyszkami |
 | Bzyczki | – |
-| boss Grzybowy Król | – |
+| boss Grzybowy Król | 6 serc, 3 fazy (fale uderzeniowe, salwy zarodników, przywołane muchomorki); po każdym trafieniu odskakuje i jest chwilę nietykalny; zryw i taran się od niego odbijają |
 
 **Zbieranie:** dużo żołędzi z mnożnikiem serii, słoiki ze świetlikami (gwiazdka), złote żołędzie w sekretach.
 **Moce:** magnes, bańka, Turbo-marchew. Po trafieniu żołędzie się rozsypują i można je odzyskać.
 **Kraina 1, Polana Grzybów:** Leśna ścieżka, Korony drzew, Jeżynowy gąszcz, pościg Wiatrołom i finał z Grzybowym Królem.
+Poziomy mają 8,5–10,5 tys. px (ok. 2,5× dłuższe niż w pierwszej wersji), z 3–4 punktami kontrolnymi każdy.
+Mapa świata to leśna polana ze ścieżką, a w tle widać kolejne krainy: Mokradła i Mgłę oraz Drzewo Licha.
+Źródła poziomów, grafiki i mapy są w `przygoda3/tools/`, a `patch_p3.py` składa z nich grę na bazie części 1.
 
 Poziomy sprawdza walidator osiągalności dla obu postaci (`przygoda3/tools/validate3.js`).
 Bot przeszedł każdy poziom obiema postaciami bez utraty serca.

@@ -1305,152 +1305,130 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   const ARC = (x, k, n, span, rise) => Array.from({ length: n }, (_, i) => { const t = n === 1 ? 0.5 : i / (n - 1); return makePickup(Math.round(x + t * span), Math.round(H - TILE * k - 33 - Math.sin(t * Math.PI) * rise), 'carrot'); });
   const COL = (x, k0, k1, step = 2, kind = 'carrot') => { const out = []; for (let k = k0; k <= k1; k += step) out.push(PU(x, k, kind)); return out; };
   const SP = (x) => makeSpike(x, H - TILE - 5 * PIXEL);
-  const SPK = (x, k) => makeSpike(x, H - TILE * k - 5 * PIXEL);
   const VINE = (x, kTop, kBottom = 1) => ({ x, top: H - TILE * kTop, bottom: H - TILE * kBottom });
+  const T24 = (w) => Math.round(w / TILE);
+
+  // ---- segmenty poziomów: każdy dopisuje elementy do L i zwraca swoją szerokość ----
+  const ENEMY = (L, kind, x0, x1, k = 1) => {
+    if (kind === 'bee') L.enemies.push(makeEnemySpawn(Math.round((x0 + x1) / 2), H - TILE * k, x0, x1, false, 'bee'));
+    else L.enemies.push(makeEnemySpawn(Math.round((x0 + x1) / 2), ONP(k), x0, x1, false, kind === 'walker' ? 'walker' : kind));
+  };
+  const GR = (len, o = {}) => (L, x) => {
+    L.platforms.push(PL(x, 1, T24(len)));
+    if (o.acorns !== false) L.pickups.push(...ROW(x + 40, 1, Math.max(1, Math.floor((len - 80) / 44)), 44));
+    (o.enemies || []).forEach((kind, i, arr) => {
+      const span = (len - 80) / arr.length;
+      const a = x + 40 + i * span;
+      ENEMY(L, kind, Math.round(a), Math.round(a + span), kind === 'bee' ? 7 : 1);
+    });
+    if (o.cp) L.checkpoints.push(GROUND_CP(x + Math.round(len / 2)));
+    if (o.power) L.pickups.push(PU(x + Math.round(len * 0.7), 3, o.power));
+    if (o.heart) L.pickups.push(PU(x + Math.round(len * 0.3), 3, 'heart'));
+    if (o.secret) L.secrets.push(makeSecret(x + len - 70, H - TILE * 3, 26, TILE * 2, o.secret, ['golden', 'heart']));
+    return len;
+  };
+  const GAP = (w = 72) => (L, x) => { L.pickups.push(...ARC(x - 40, 1, 5, w + 80, 70)); return w; };
+  const STAIRS = (o = {}) => (L, x) => {
+    const top = o.top || 7;
+    L.platforms.push(PL(x, 1, 22));
+    L.platforms.push(PL(x + 80, 4, 4), PL(x + 210, top, 4), PL(x + 340, 4, 4));
+    L.pickups.push(...ROW(x + 90, 4, 3), ...ROW(x + 220, top, 3), ...ROW(x + 350, 4, 3));
+    if (o.jar) L.pickups.push(PU(x + 250, top + 4, 'diamond'));
+    if (o.enemy) ENEMY(L, o.enemy, x + 30, x + 500);
+    return 528;
+  };
+  const TOWER = (o = {}) => (L, x) => {
+    L.platforms.push(PL(x, 1, 16));
+    L.bouncers.push({ x: x + 190, y: H - TILE });
+    L.pickups.push(...COL(x + 190, 4, 11, 2), ...ROW(x + 30, 1, 3, 36), ...ROW(x + 260, 1, 3, 36));
+    if (o.jar) L.pickups.push(PU(x + 190, 13, 'diamond'));
+    if (o.enemy) ENEMY(L, o.enemy, x + 230, x + 380);
+    return 384;
+  };
+  const VINE_SECRET = (o = {}) => (L, x) => {
+    L.platforms.push(PL(x, 1, 18), PL(x + 60, 4, 3), PL(x + 150, 7, 3), PL(x + 250, 12, 4));
+    L.vines.push(VINE(x + 236, 12));
+    L.pickups.push(...ROW(x + 70, 4, 2), ...ROW(x + 160, 7, 2), ...ROW(x + 262, 12, 3, 30, 'golden'), PU(x + 350, 12, o.power || 'bubble'));
+    if (o.jar) L.pickups.push(PU(x + 300, 15, 'diamond'));
+    return 432;
+  };
+  const BRANCHES = (heights, o = {}) => (L, x) => {
+    heights.forEach((k, i) => {
+      const px = x + 40 + i * 150;
+      L.platforms.push(PL(px, k, 4));
+      L.pickups.push(...ROW(px + 10, k, 3));
+      if (o.squirrel === i) ENEMY(L, 'squirrel', px + 4, px + 92, k);
+      if (o.jar === i) L.pickups.push(PU(px + 40, k + 4, 'diamond'));
+    });
+    const w = 40 + heights.length * 150;
+    if (o.bee) ENEMY(L, 'bee', x + 120, x + w - 120, Math.max(...heights) + 4);
+    return w;
+  };
+  const BRAMBLE = (len, o = {}) => (L, x) => {
+    L.platforms.push(PL(x, 1, T24(len)));
+    for (let bx = x + 160; bx < x + len - 120; bx += 260) {
+      L.spikes.push(SP(bx), SP(bx + 24));
+      if (o.over !== false) L.platforms.push(PL(bx - 24, 4, 4));
+      L.pickups.push(...ARC(bx - 30, 1, 4, 110, 80));
+    }
+    (o.enemies || []).forEach((kind, i, arr) => {
+      const span = (len - 80) / arr.length;
+      const a = x + 40 + i * span;
+      ENEMY(L, kind, Math.round(a), Math.round(a + span), kind === 'bee' ? 8 : 1);
+    });
+    if (o.power) L.pickups.push(PU(x + 60, 3, o.power));
+    if (o.cp) L.checkpoints.push(GROUND_CP(x + 80));
+    return len;
+  };
+  const PERCH = (o = {}) => (L, x) => {
+    L.platforms.push(PL(x, 1, 20), PL(x + 180, 5, 4));
+    ENEMY(L, 'squirrel', x + 184, x + 272, 5);
+    L.pickups.push(...ROW(x + 30, 1, 4, 36), ...ROW(x + 300, 1, 4, 36), ...ROW(x + 190, 5, 3));
+    if (o.jar) L.pickups.push(PU(x + 220, 9, 'diamond'));
+    return 480;
+  };
+
+  function buildLevel(meta, segs) {
+    const L = { ...meta, platforms: [], enemies: [], pickups: [], bouncers: [], vines: [], spikes: [], secrets: [], checkpoints: [] };
+    let x = 0;
+    segs.forEach((seg) => { x += seg(L, x); });
+    L.worldWidth = x;
+    L.exitX = x - 90;
+    L.startX = 50;
+    L.startY = H - TILE - PLAYER_H;
+    L.checkpoint = L.checkpoints[0] || null;
+    return L;
+  }
 
   const LEVELS = [
-    {
-      worldWidth: 3300,
-      label: 'Poziom 1: Leśna ścieżka',
-      hint: 'Zbieraj żołędzie bez przerwy – rośnie mnożnik! Słoiki ze świetlikami dają gwiazdkę.',
-      sky1: '#9ED9F0', sky2: '#E9F9E0',
-      startX: 50,
-      startY: H - TILE - PLAYER_H,
-      exitX: 3220,
-      checkpoint: GROUND_CP(1420),
-      platforms: [
-        PL(0, 1, 30), PL(800, 1, 20), PL(1360, 1, 25), PL(2040, 1, 53),
-        PL(240, 4, 4), PL(400, 6, 3), PL(540, 4, 4),
-        PL(960, 5, 5),
-        PL(1480, 4, 3), PL(1620, 7, 3), PL(1760, 4, 3), PL(1540, 12, 4),
-        PL(2280, 4, 5), PL(2480, 7, 4), PL(2680, 4, 4),
-        PL(3000, 5, 4)
-      ],
-      bouncers: [{ x: 1150, y: H - TILE }, { x: 2180, y: H - TILE }],
-      vines: [VINE(1714, 12)],
-      enemies: [
-        makeEnemySpawn(900, ONP(1), 820, 1120, false),
-        makeEnemySpawn(1820, ONP(1), 1700, 1950, false),
-        makeEnemySpawn(2400, ONP(1), 2240, 2660, false, 'hopper'),
-        makeEnemySpawn(2900, ONP(1), 2820, 3150, false)
-      ],
-      spikes: [],
-      pickups: [
-        ...ROW(70, 1, 6, 32), ...ROW(250, 4, 3), ...ROW(410, 6, 2), ...ROW(550, 4, 3),
-        ...ARC(690, 1, 5, 140, 70), ...ROW(840, 1, 3), ...ROW(972, 5, 4), PU(1060, 5, 'magnet'),
-        ...COL(1150, 4, 10, 3), PU(1150, 13, 'diamond'),
-        ...ARC(1250, 1, 5, 140, 70), ...ROW(1390, 1, 3), ...ROW(1490, 4, 2), ...ROW(1630, 7, 2),
-        ...ROW(1550, 12, 3, 30, 'golden'), ...ROW(1770, 4, 2), PU(1900, 1, 'heart'),
-        ...ARC(1930, 1, 5, 140, 70), ...COL(2180, 4, 9, 2), ...ROW(2290, 4, 4), PU(2410, 1, 'bubble'),
-        ...ROW(2490, 7, 2), PU(2550, 7, 'diamond'), ...ROW(2690, 4, 3),
-        ...ROW(2800, 1, 6, 34), ...ROW(3010, 5, 2), PU(3070, 5, 'diamond'), ...ROW(3120, 1, 3, 30)
-      ]
-    },
-    {
-      worldWidth: 3420,
-      label: 'Poziom 2: Korony drzew',
-      hint: 'Wysoko w koronach! Uważaj na szyszki wiewiórek i nie spadnij w dół.',
-      sky1: '#8FCBEE', sky2: '#F2F8E0',
-      startX: 50,
-      startY: H - TILE - PLAYER_H,
-      exitX: 3330,
-      checkpoint: { x: 1660, y: H - TILE * 4, respawnX: 1640, respawnY: H - TILE * 4 - PLAYER_H },
-      platforms: [
-        PL(0, 1, 12),
-        PL(300, 4, 4), PL(440, 6, 4), PL(600, 8, 4), PL(780, 6, 5), PL(960, 8, 4), PL(1120, 10, 4),
-        PL(1300, 8, 5), PL(1480, 6, 4), PL(1620, 4, 6),
-        PL(1600, 1, 20), PL(1860, 12, 4),
-        PL(2100, 4, 4), PL(2240, 7, 4), PL(2400, 9, 5), PL(2580, 7, 4), PL(2740, 5, 4), PL(2900, 3, 4),
-        PL(3000, 1, 18)
-      ],
-      bouncers: [{ x: 1730, y: H - TILE * 4 }],
-      vines: [VINE(1830, 12)],
-      enemies: [
-        makeEnemySpawn(830, ONP(6), 784, 896, false, 'squirrel'),
-        makeEnemySpawn(1350, ONP(8), 1304, 1416, false, 'squirrel'),
-        makeEnemySpawn(1040, H - TILE * 13, 940, 1260, false, 'bee'),
-        makeEnemySpawn(1820, ONP(1), 1780, 2070, false),
-        makeEnemySpawn(2300, H - TILE * 12, 2180, 2580, false, 'bee'),
-        makeEnemySpawn(2440, ONP(9), 2404, 2516, false, 'squirrel'),
-        makeEnemySpawn(3200, ONP(1), 3060, 3380, false, 'hopper')
-      ],
-      spikes: [],
-      pickups: [
-        ...ROW(60, 1, 5, 34), ...ROW(310, 4, 3), ...ROW(450, 6, 3), ...ROW(610, 8, 3), ...ARC(690, 8, 4, 90, 40),
-        ...ROW(790, 6, 3), ...ROW(970, 8, 3), ...ROW(1130, 10, 2), PU(1170, 10, 'diamond'), ...ARC(1210, 10, 4, 90, 40),
-        ...ROW(1310, 8, 4), ...ROW(1490, 6, 3), ...ROW(1630, 4, 3), ...COL(1730, 6, 10, 2), PU(1730, 12, 'diamond'),
-        ...ROW(1870, 12, 3, 30, 'golden'), PU(1960, 12, 'bubble'), ...ROW(1620, 1, 8, 50), PU(2000, 1, 'heart'),
-        PU(2120, 4, 'lettuce'), ...ROW(2250, 7, 3), ...ROW(2410, 9, 3), PU(2500, 9, 'diamond'), ...ARC(2520, 9, 4, 60, 30),
-        ...ROW(2590, 7, 3), ...ROW(2750, 5, 3), ...ROW(2910, 3, 3), ...ROW(3040, 1, 8, 34)
-      ]
-    },
-    {
-      worldWidth: 3600,
-      label: 'Poziom 3: Jeżynowy gąszcz',
-      hint: 'Jeży nie wolno skakać po grzbiecie! Bobek, zryw, tupnięcie albo Turbo-marchew.',
-      sky1: '#A8D8C8', sky2: '#F4F0D0',
-      startX: 50,
-      startY: H - TILE - PLAYER_H,
-      exitX: 3520,
-      checkpoint: GROUND_CP(1900),
-      platforms: [
-        PL(0, 1, 40), PL(1040, 1, 30), PL(1840, 1, 35), PL(2760, 1, 36),
-        PL(380, 4, 4), PL(1200, 4, 5), PL(1400, 6, 3), PL(2000, 4, 4), PL(2160, 6, 4),
-        PL(2900, 4, 5), PL(3100, 7, 3)
-      ],
-      enemies: [
-        makeEnemySpawn(700, ONP(1), 640, 940, false, 'hedgehog'),
-        makeEnemySpawn(1100, H - TILE * 9, 1000, 1380, false, 'bee'),
-        makeEnemySpawn(1560, ONP(1), 1480, 1740, false, 'hedgehog'),
-        makeEnemySpawn(2100, ONP(1), 1880, 2380, false),
-        makeEnemySpawn(2190, ONP(6), 2164, 2252, false, 'squirrel'),
-        makeEnemySpawn(2520, ONP(1), 2420, 2670, false, 'hedgehog'),
-        makeEnemySpawn(2860, H - TILE * 10, 2780, 3220, false, 'bee'),
-        makeEnemySpawn(3420, ONP(1), 3380, 3600, false, 'hopper')
-      ],
-      spikes: [SP(560), SP(584), SP(1290), SP(1314), SP(1600 + 160), SP(2300 + 30), SP(2354), SP(3300), SP(3324)],
-      secrets: [makeSecret(2620, H - TILE * 3, 26, TILE * 2, 'JEŻYNOWA NORKA!', ['golden', 'heart'])],
-      pickups: [
-        ...ROW(60, 1, 6, 34), PU(400, 4, 'lettuce'), ...ROW(440, 4, 2), ...ARC(520, 1, 4, 100, 70),
-        ...ROW(700, 1, 6, 40), PU(1100, 1, 'heart'), ...ROW(1210, 4, 4), PU(1290, 4, 'bubble'), ...ROW(1410, 6, 2), PU(1440, 6, 'diamond'),
-        ...ARC(1720, 1, 5, 130, 70), ...ROW(1900, 1, 3), ...ROW(2010, 4, 3), PU(2060, 4, 'magnet'), ...ROW(2170, 6, 3), PU(2230, 6, 'diamond'),
-        ...ARC(2290, 1, 4, 100, 70), ...ROW(2440, 1, 6, 36), ...ARC(2660, 1, 5, 120, 70), PU(2800, 1, 'heart'),
-        ...ROW(2910, 4, 4), ...ROW(3110, 7, 2), PU(3140, 7, 'diamond'), ...ARC(3270, 1, 4, 100, 70), ...ROW(3400, 1, 4, 30)
-      ]
-    },
-    {
-      worldWidth: 4300,
-      label: 'Poziom 4: Wiatrołom',
-      hint: 'Wiatrołom! Biegnij w prawo i nie zatrzymuj się – pień toczy się tuż za tobą.',
-      sky1: '#6E8AA0', sky2: '#C8D4C0',
-      startX: 50,
-      startY: H - TILE - PLAYER_H,
-      exitX: 4220,
-      chase: { speed: 2.05, delay: 170 },
-      checkpoint: GROUND_CP(2000),
-      platforms: [
-        PL(0, 1, 30), PL(790, 1, 20), PL(1340, 1, 18), PL(1840, 1, 25), PL(2510, 1, 20), PL(3060, 1, 22), PL(3650, 1, 28),
-        PL(1000, 4, 4), PL(1500, 4, 4), PL(2100, 5, 4), PL(2700, 4, 4), PL(3300, 5, 4), PL(3900, 4, 4)
-      ],
-      bouncers: [{ x: 1220, y: H - TILE }, { x: 2330, y: H - TILE }, { x: 3500, y: H - TILE }],
-      enemies: [
-        makeEnemySpawn(1100, ONP(1), 1000, 1260, false),
-        makeEnemySpawn(2860, H - TILE * 8, 2700, 3000, false, 'bee'),
-        makeEnemySpawn(3800, ONP(1), 3700, 4100, false, 'hopper')
-      ],
-      spikes: [],
-      pickups: [
-        PU(400, 1, 'magnet'), ...ROW(120, 1, 8, 34), ...ARC(690, 1, 5, 150, 80), ...ROW(1010, 4, 3), ...COL(1220, 4, 10, 2),
-        ...ARC(1240, 1, 5, 130, 70), ...ROW(1510, 4, 2), PU(1560, 4, 'diamond'), ...ARC(1740, 1, 5, 130, 70), PU(1900, 1, 'heart'),
-        ...ROW(2110, 5, 3), ...COL(2330, 4, 10, 2), PU(2330, 12, 'diamond'), ...ARC(2410, 1, 5, 130, 70), PU(2600, 1, 'bubble'),
-        ...ROW(2710, 4, 3), ...ARC(2960, 1, 5, 130, 70), ...ROW(3100, 1, 5, 34), ...ROW(3310, 5, 2), PU(3360, 5, 'diamond'),
-        ...COL(3500, 4, 10, 2), ...ARC(3560, 1, 5, 110, 70), ...ROW(3910, 4, 3), ...ROW(4000, 1, 6, 34)
-      ]
-    },
+    buildLevel({ label: 'Poziom 1: Leśna ścieżka', hint: 'Zbieraj żołędzie bez przerwy – rośnie mnożnik! Trzy słoiki ze świetlikami dają gwiazdkę.', sky1: '#9ED9F0', sky2: '#E9F9E0' }, [
+      GR(520), STAIRS(), GAP(), GR(420, { enemies: ['walker'] }), TOWER({ jar: true }), GR(360, { power: 'magnet' }), GAP(),
+      VINE_SECRET(), GR(480, { enemies: ['walker'], cp: true }), STAIRS({ enemy: 'walker' }), GAP(80), GR(520, { enemies: ['hopper'] }),
+      TOWER(), GR(400, { heart: true }), STAIRS({ jar: true, top: 8 }), GAP(), GR(600, { enemies: ['walker', 'hopper'], cp: true }),
+      GR(360, { power: 'bubble' }), STAIRS(), GAP(80), TOWER({ jar: true, enemy: 'walker' }), GR(700, { enemies: ['walker', 'walker'] }), GR(420, { acorns: false })
+    ]),
+    buildLevel({ label: 'Poziom 2: Korony drzew', hint: 'Wysoko w koronach! Uważaj na szyszki wiewiórek i nie spadnij w dół.', sky1: '#8FCBEE', sky2: '#F2F8E0' }, [
+      GR(300), BRANCHES([4, 6, 8, 6, 8, 6], { squirrel: 2 }), GR(360), BRANCHES([4, 6, 8, 10, 8, 6, 4], { bee: true, jar: 3 }),
+      GR(480, { enemies: ['walker'], cp: true }), TOWER({ jar: true }), BRANCHES([4, 6, 8, 6, 4, 6], { squirrel: 3, bee: true }),
+      GR(400, { power: 'lettuce' }), VINE_SECRET({ power: 'magnet' }), BRANCHES([4, 6, 8, 10, 12, 10, 8, 6], { squirrel: 4, bee: true, jar: 4 }),
+      GR(480, { enemies: ['hopper'], cp: true, heart: true }), BRANCHES([4, 6, 8, 6, 4], { squirrel: 2 }), PERCH(), BRANCHES([4, 6, 4], { bee: true }), GR(520, { enemies: ['walker'] }), GR(400, { acorns: false })
+    ]),
+    buildLevel({ label: 'Poziom 3: Jeżynowy gąszcz', hint: 'Jeży nie wolno skakać po grzbiecie! Bobek, zryw, tupnięcie albo Turbo-marchew.', sky1: '#A8D8C8', sky2: '#F4F0D0' }, [
+      GR(400), BRAMBLE(720, { enemies: ['hedgehog'], power: 'lettuce' }), GAP(), STAIRS({ jar: true }), BRAMBLE(600, { enemies: ['bee'] }),
+      GR(400, { enemies: ['walker'], cp: true, secret: 'JEŻYNOWA NORKA!' }), PERCH(), BRAMBLE(840, { enemies: ['hedgehog', 'hedgehog'] }), TOWER({ jar: true }),
+      GR(400, { heart: true, power: 'bubble' }), BRAMBLE(720, { enemies: ['bee', 'hedgehog'], cp: true }), PERCH({ jar: true }), BRAMBLE(600, { enemies: ['hopper'] }),
+      VINE_SECRET(), STAIRS({ enemy: 'hedgehog' }), GR(520, { enemies: ['walker', 'hedgehog'] }), GR(420, { acorns: false })
+    ]),
+    buildLevel({ label: 'Poziom 4: Wiatrołom', hint: 'Wiatrołom! Biegnij w prawo i nie zatrzymuj się – pień toczy się tuż za tobą.', sky1: '#6E8AA0', sky2: '#C8D4C0', chase: { speed: 2.05, delay: 170 } }, [
+      GR(800, { power: 'magnet' }), GAP(), GR(500), STAIRS(), GAP(80), TOWER({ jar: true }), GR(600, { enemies: ['walker'] }), GAP(),
+      GR(500, { cp: true, heart: true }), STAIRS({ jar: true }), GAP(80), GR(600, { power: 'bubble' }), TOWER(), GAP(), GR(500, { enemies: ['hopper'] }),
+      GR(600, { cp: true }), GAP(), STAIRS(), TOWER({ jar: true }), GAP(80), GR(800, { enemies: ['walker'] }), GAP(), GR(500, { cp: true, heart: true }),
+      STAIRS(), GAP(), GR(700, { power: 'magnet' }), GR(420, { acorns: false })
+    ]),
     {
       worldWidth: 1500,
       label: 'Finał: Grzybowy Król',
-      hint: 'Grzybowy Król! Przeskakuj szarżę i skacz mu na kapelusz. Uciekaj spod cieni zarodników.',
+      hint: 'Grzybowy Król! Przeskakuj szarżę i fale, skacz mu na kapelusz. Uciekaj spod cieni zarodników.',
       sky1: '#1E2A3A', sky2: '#3E4A5A',
       startX: 50,
       startY: H - TILE - PLAYER_H,
@@ -1464,7 +1442,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       enemies: [makeEnemySpawn(620, H - TILE - CAT_H * 2 - 4, 360, 1040, true)],
       spikes: [],
       pickups: [
-        ...ROW(250, 4, 5, 30), PU(360, 1, 'heart'), PU(690, 4, 'diamond'), PU(750, 4, 'lettuce'),
+        ...ROW(250, 4, 5, 30), PU(360, 1, 'heart'), PU(690, 4, 'diamond'),
         PU(760, 1, 'heart'), ...ROW(1090, 4, 5, 30), PU(1180, 1, 'heart'), PU(1320, 1, 'bubble')
       ]
     }
@@ -3739,6 +3717,10 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     game.chaseX = source.chase ? source.startX - 360 : -1e9;
     game.vineHintShown = false;
     if (HERO === 'C') game.guide.doubleDone = true;
+    game.cpList = (source.checkpoints || []).map((c) => ({ ...c }));
+    game.cpIndex = 0;
+    game.bossWaves = [];
+    game.bossSpores = [];
   }
 
   function enemyBaseSpeed(spawn, levelIndex) {
@@ -3858,6 +3840,13 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
 
   function updateP3() {
     const player = game.player;
+    // kolejne flagi w długich poziomach
+    if (game.cpList && game.checkpointActive && game.cpIndex + 1 < game.cpList.length && player.x > game.cpList[game.cpIndex + 1].x - 420) {
+      game.cpIndex += 1;
+      game.checkpoint = { ...game.cpList[game.cpIndex] };
+      game.checkpointActive = false;
+    }
+    updateBossExtras();
     if (game.magnet > 0) game.magnet -= 1;
     if (player.bubble > 0) player.bubble -= 1;
     // pnącza – podpowiedź
@@ -4049,6 +4038,78 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     if (player.dash > 0) {
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       for (let k = 0; k < 3; k += 1) ctx.fillRect(snap(drawX + (player.dashDir > 0 ? -16 - k * 14 : PLAYER_W + 6 + k * 14)), snap(drawY + 14 + k * 10), 12, 3);
+    }
+  }
+
+  // ---------- Grzybowy Król: fale uderzeniowe, salwy zarodników, pomocnicy ----------
+  function bossShockwave(enemy) {
+    const cx = enemy.x + enemy.w / 2;
+    game.bossWaves.push({ x: cx - 20, dir: -1, life: 120 }, { x: cx + 20, dir: 1, life: 120 });
+    audio.noise(0.4, 0.14, 'lowpass', 600, 80, 0, 0.8);
+  }
+  function bossVolley(enemy) {
+    const cx = enemy.x + enemy.w / 2;
+    const p = game.player;
+    const n = 3;
+    for (let k = 0; k < n; k += 1) {
+      const tx = p.x + PLAYER_W / 2 + (k - 1) * 90;
+      game.bossSpores.push({ x: cx, y: enemy.y + 10, vx: clamp((tx - cx) / 56, -6, 6), vy: -8.5 - k * 0.4, life: 300 });
+    }
+    audio.tone(300, 0.18, 'sawtooth', 0.06, 160, 0);
+  }
+  function bossSummon(enemy) {
+    const minions = game.enemies.filter((e) => !e.boss && e.hp > 0).length;
+    if (minions >= 2) return;
+    const side = Math.random() < 0.5 ? enemy.minX + 10 : enemy.maxX - 60;
+    const e = createEnemy(makeEnemySpawn(side, H - TILE - CAT_H - 200, enemy.minX, enemy.maxX, false, 'walker'), game.levelIndex);
+    e.vy = 2;
+    game.enemies.push(e);
+    emitSpark(side + 24, H - TILE - 60, '#C86AA8', 16);
+    setNotice('Król przywołał muchomorki!', '#F4C8E8', 120, 2, 'UWAGA');
+  }
+  function updateBossExtras() {
+    const player = game.player;
+    game.bossWaves = game.bossWaves.filter((w) => {
+      w.x += w.dir * 5.2;
+      w.life -= 1;
+      const ground = H - TILE;
+      const onGround = player.y + PLAYER_H >= ground - 6;
+      if (onGround && Math.abs(player.x + PLAYER_W / 2 - w.x) < 22 && player.invul <= 0) damagePlayer('fala');
+      return w.life > 0 && w.x > 0 && w.x < game.level.worldWidth;
+    });
+    game.bossSpores = game.bossSpores.filter((s) => {
+      s.vy = Math.min(9, s.vy + 0.3);
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life -= 1;
+      if (s.y > H - TILE - 10) { emitSpark(s.x, H - TILE - 6, '#C86AA8', 6); return false; }
+      for (const p of game.platforms) if (s.x > p.x && s.x < p.x + p.w && s.y + 8 >= p.y && s.y + 8 <= p.y + 14 && s.vy > 0) { emitSpark(s.x, p.y, '#C86AA8', 6); return false; }
+      if (overlap(player.x + 8, player.y + 6, PLAYER_W - 16, PLAYER_H - 10, s.x - 8, s.y - 8, 16, 16)) {
+        if (player.invul <= 0) damagePlayer('wloczka');
+        return false;
+      }
+      return s.life > 0;
+    });
+  }
+  function drawBossExtras() {
+    for (const w of game.bossWaves) {
+      const x = snap(w.x - game.cameraX);
+      const ground = H - TILE;
+      const a = Math.min(1, w.life / 30);
+      ctx.fillStyle = `rgba(200,150,90,${0.85 * a})`;
+      ctx.fillRect(x - 12, ground - 18, 24, 18);
+      ctx.fillStyle = `rgba(255,230,180,${0.9 * a})`;
+      ctx.fillRect(x - 8, ground - 26, 16, 8);
+      ctx.fillRect(x - (w.dir > 0 ? 18 : -10), ground - 10, 8, 10);
+    }
+    for (const s of game.bossSpores) {
+      const x = snap(s.x - game.cameraX);
+      ctx.fillStyle = '#5A2A4A';
+      ctx.fillRect(x - 8, snap(s.y) - 8, 16, 16);
+      ctx.fillStyle = '#E28AC8';
+      ctx.fillRect(x - 6, snap(s.y) - 6, 12, 12);
+      ctx.fillStyle = '#FFE0F4';
+      ctx.fillRect(x - 3, snap(s.y) - 4, 4, 4);
     }
   }
 
@@ -4400,7 +4461,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   }
 
   // ---------------- world map ----------------
-  const MAP_NODES = [[110, 392], [250, 330], [400, 388], [550, 312], [700, 230]];
+  const MAP_NODES = [[90, 404], [200, 330], [330, 394], [452, 314], [566, 252]];
   const MAP_COLORS = ['#7BD45A', '#F2A65A', '#3E9A5A', '#8FC8FF', '#4AA0E0', '#F28AB8', '#A39AB2', '#9A6CF0'];
   let mapArt = null;
 
@@ -4409,8 +4470,8 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     for (let i = 0; i < MAP_NODES.length - 1; i += 1) {
       const [x0, y0] = MAP_NODES[i];
       const [x1, y1] = MAP_NODES[i + 1];
-      const cx = (x0 + x1) / 2 + (i % 2 ? 26 : -26);
-      const cy = (y0 + y1) / 2 + (i % 2 ? -20 : 24);
+      const cx = (x0 + x1) / 2 + (i % 2 ? 30 : -30);
+      const cy = (y0 + y1) / 2 + (i % 2 ? -26 : 30);
       for (let t = 0; t <= 1; t += 0.02) {
         const a = (1 - t) * (1 - t);
         const b = 2 * (1 - t) * t;
@@ -4423,104 +4484,123 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
 
   function buildMapArt() {
     const W = 400;
-    const H = 240;
-    const greens = ['#5AA44C', '#69B655', '#7CC860', '#93D86E'].map(hexRgb);
-    const water = ['#3E86C8', '#4E9AD8', '#6CB4E8'].map(hexRgb);
-    const sand = hexRgb('#E9D59A');
-    const rock = ['#8C8496', '#A39CAC', '#C2BCC8', '#F2F2F8'].map(hexRgb);
-    const lake = (x, y) => ((x - 52) / 56) ** 2 + ((y - 44) / 30) ** 2;
-    const riverX = (y) => 140 + (y - 60) * 0.62 + Math.sin(y * 0.05) * 12;
-    const mountainTop = (x) => 128 - (x - 250) * 0.42 + periodicNoise(x / 9, 999, 3) * 14;
-    const base = imageCanvas(W, H, (set) => {
-      for (let y = 0; y < H; y += 1) {
+    const H2 = 240;
+    const floor = ['#2E5E34', '#376E3C', '#417C44', '#4E8A4C'].map(hexRgb);
+    const meadow = ['#6EAE52', '#7CBE5C', '#8CCB66', '#A2D874'].map(hexRgb);
+    const marsh = ['#2E5A5E', '#3A6E6E', '#4E8480', '#6E9E94'].map(hexRgb);
+    const dusk = ['#2A2440', '#33294C', '#3E3058', '#4A3A64'].map(hexRgb);
+    const sand = hexRgb('#D9C48A');
+    const pts = mapPathPoints().map(([x, y]) => [x / 2, y / 2]);
+    const nodes = MAP_NODES.map(([x, y]) => [x / 2, y / 2]);
+    const pathDist = (x, y) => { let d = 1e9; for (let i = 0; i < pts.length; i += 2) { const dd = Math.hypot(x - pts[i][0], y - pts[i][1]); if (dd < d) d = dd; } return d; };
+    const nodeDist = (x, y) => Math.min(...nodes.map(([nx, ny]) => Math.hypot(x - nx, y - ny)));
+    const inMarsh = (x, y) => ((x - 350) / 78) ** 2 + ((y - 205) / 48) ** 2 < 1;
+    const inDusk = (x, y) => ((x - 352) / 70) ** 2 + ((y - 62) / 64) ** 2 < 1;
+    const distField = new Float32Array(W * H2);
+    for (let y = 0; y < H2; y += 1) for (let x = 0; x < W; x += 1) distField[y * W + x] = Math.min(pathDist(x, y), nodeDist(x, y) - 6);
+    const base = imageCanvas(W, H2, (set) => {
+      for (let y = 0; y < H2; y += 1) {
         for (let x = 0; x < W; x += 1) {
-          const n = noise2(x * 0.06, y * 0.06, 11) * 0.7 + noise2(x * 0.22, y * 0.22, 12) * 0.3 + (bayer(x, y) - 0.5) * 0.14;
-          let rgb = greens[n < 0.36 ? 0 : n < 0.58 ? 1 : n < 0.78 ? 2 : 3];
-          const l = lake(x, y);
-          const rd = y > 56 ? Math.abs(x - riverX(y)) : 99;
-          if (l < 1 || rd < 4) {
-            const w = (x * 3 + y * 7) % 11 === 0 ? 2 : (l < 0.5 || rd < 2 ? 0 : 1);
-            rgb = water[w];
-          } else if (l < 1.25 || rd < 6) {
-            rgb = sand;
+          const n = noise2(x * 0.07, y * 0.07, 21) * 0.7 + noise2(x * 0.25, y * 0.25, 22) * 0.3 + (bayer(x, y) - 0.5) * 0.16;
+          const ti = n < 0.36 ? 0 : n < 0.56 ? 1 : n < 0.76 ? 2 : 3;
+          let rgb = floor[ti];
+          const d = distField[y * W + x];
+          if (d < 17) rgb = meadow[Math.min(3, ti + (d < 7 ? 1 : 0))];
+          if (inDusk(x, y)) rgb = dusk[ti];
+          if (inMarsh(x, y)) {
+            const water = noise2(x * 0.12, y * 0.12, 5) > 0.55;
+            rgb = water ? marsh[(x + y) % 7 === 0 ? 3 : 1] : marsh[ti > 1 ? 2 : 0];
           }
-          if (x > 250) {
-            const peak = Math.abs(((x - 250) % 34) - 17) * 1.6;
-            const ridge = mountainTop(x) - 58 + peak + noise2(x * 0.2, 2, 4) * 8;
-            if (y < mountainTop(x) && y > ridge) {
-              const fromTop = y - ridge;
-              const leftLit = ((x - 250) % 34) < 17;
-              let tone = leftLit ? 2 : 1;
-              if (noise2(x * 0.18, y * 0.18, 7) > 0.66) tone -= 1;
-              rgb = fromTop < 7 + noise2(x * 0.4, 3, 5) * 4 ? rock[3] : rock[Math.max(0, tone)];
-            }
-          }
+          if (d < 2.2 && d > -100) rgb = sand;
           set(x, y, rgb);
         }
       }
     });
     const g = base.getContext('2d');
-    // path (dotted sand) with shadow
-    const pts = mapPathPoints();
-    pts.forEach(([px, py], index) => {
-      if (index % 3 === 2) return;
-      const x = Math.round(px / 2);
-      const y = Math.round(py / 2);
-      g.fillStyle = '#9C7E44';
-      g.fillRect(x - 1, y, 3, 2);
+    // ścieżka z kamyków
+    pts.forEach(([x, y], i) => {
+      if (i % 3 === 2) return;
+      g.fillStyle = '#8A6A38';
+      g.fillRect(Math.round(x) - 1, Math.round(y) + 1, 3, 1);
       g.fillStyle = '#F2E2AA';
-      g.fillRect(x - 1, y - 1, 3, 2);
+      g.fillRect(Math.round(x) - 1, Math.round(y), 3, 1);
     });
-    // decor via pixel grids
-    const decor = new PixelGrid(W, H);
+    const decor = new PixelGrid(W, H2);
     const mats = [
-      makeMat('#3E8A52', null, { strength: 0.8 }),
-      makeMat('#5E3E26', null, { strength: 0.6 }),
-      makeMat('#F4F8FF', null, { tones: ['#B8C8E4', '#DCE6F6', '#F4F8FF', '#FFFFFF'] }),
-      makeMat('#F2862E', null, { flat: true }),
-      makeMat('#F49AC4', null, { flat: true }),
-      makeMat('#F3E6CC', null, { strength: 0.4 }),
-      makeMat('#7E7890', null, { strength: 0.7 }),
-      makeMat('#6E4A9A', null, { strength: 0.7 }),
-      makeMat('#FFE07A', null, { flat: true }),
-      makeMat('#4F9A4A', null, { strength: 0.8 })
+      makeMat('#3E8A44', '#14301A', { tones: ['#1E4A26', '#2E6A34', '#4A9A4A', '#7AC468'] }),
+      makeMat('#5A3A22', '#1E120A', { strength: 0.6 }),
+      makeMat('#E9473F', '#4A0E0E'),
+      makeMat('#F4ECD8', null, { flat: true }),
+      makeMat('#4A3A6E', '#140E24', { tones: ['#1E1430', '#2E2248', '#4A3A6E', '#6A5A9A'] }),
+      makeMat('#FFE65A', null, { flat: true }),
+      makeMat('#7A9A8A', null, { strength: 0.5 }),
+      makeMat('#C86AA8', null, { flat: true })
     ];
-    const pine = (x, y, s) => {
-      decor.rect(x, y - 1, 1, 3, 1, 1);
-      for (let k = 0; k < 3; k += 1) decor.tri(x - (5 - k) * s, y - k * 3 * s, x + (5 - k) * s + 1, y - k * 3 * s, x + 0.5, y - (k * 3 + 6) * s, 0, (a, b, c, px) => (px < x ? 3 : 1));
+    const crown = (x, y, s, m = 0) => {
+      decor.rect(x, y + 2 * s, 1, 3, 1, 1);
+      decor.ellipse(x + 0.5, y, 5 * s, 4.4 * s, m);
     };
-    const tree = (x, y, s) => {
-      decor.rect(x, y - 3, 1, 4, 1, 1);
-      decor.ellipse(x + 0.5, y - 6 * s, 4.4 * s, 4 * s, 9);
-    };
-    for (let i = 0; i < 26; i += 1) {
-      const x = 118 + hash01(i * 3.1) * 60;
-      const y = 166 + hash01(i * 7.7) * 40;
-      if (Math.hypot(x - 159, y - 197) < 12) continue;
-      pine(Math.round(x), Math.round(y), 0.8 + hash01(i) * 0.4);
+    // gęsty las poza polaną
+    for (let y = 8; y < H2 + 6; y += 9) {
+      for (let x = 4 + ((y / 9) % 2) * 5; x < W; x += 10) {
+        const jx = x + Math.round((hash01(x * 3.1 + y) - 0.5) * 5);
+        const jy = y + Math.round((hash01(y * 7.3 + x) - 0.5) * 5);
+        if (jx < 0 || jx >= W || jy < 0 || jy >= H2) continue;
+        if (distField[jy * W + jx] < 21) continue;
+        if (inMarsh(jx, jy) && !(((jx - 350) / 78) ** 2 + ((jy - 205) / 48) ** 2 > 0.82)) continue;
+        if (inDusk(jx, jy)) { if (((jx - 352) / 70) ** 2 + ((jy - 62) / 64) ** 2 > 0.55) crown(jx, jy, 0.8, 4); continue; }
+        crown(jx, jy, 0.75 + hash01(jx + jy * 13) * 0.4);
+      }
     }
-    for (const [x, y] of [[22, 150], [36, 172], [18, 200], [60, 222], [150, 120], [176, 228], [240, 228], [290, 230], [380, 226], [212, 214], [330, 124]]) tree(x, y, 1);
-    for (let r = 0; r < 4; r += 1) for (let c = 0; c < 7; c += 1) decor.put(78 + c * 6 + (r % 2) * 3, 136 + r * 5, 3);
-    for (let k = 0; k < 4; k += 1) {
-      const cx = 192 + k * 11;
-      decor.ellipse(cx, 122 + (k % 2) * 3, 7, 5, 2);
+    // grzybki przy ścieżce
+    for (let i = 0; i < pts.length; i += 9) {
+      const [px, py] = pts[i];
+      const side = i % 18 ? 9 : -9;
+      const mx = Math.round(px + side * 0.7);
+      const my = Math.round(py + side);
+      decor.rect(mx, my, 1, 2, 3, 2);
+      decor.ellipse(mx + 0.5, my - 0.5, 2.2, 1.4, 2);
+      decor.put(mx, my - 1, 3);
     }
-    for (let x = 286; x < 330; x += 4) {
-      decor.rect(x, 158, 1, 5, 5, 2);
+    // krąg grzybów przy królu
+    const [kx, ky] = nodes[nodes.length - 1];
+    for (let k = 0; k < 12; k += 1) {
+      const a = k / 12 * Math.PI * 2;
+      const mx = Math.round(kx + Math.cos(a) * 17);
+      const my = Math.round(ky + Math.sin(a) * 11);
+      decor.rect(mx, my, 1, 2, 3, 2);
+      decor.ellipse(mx + 0.5, my - 0.5, 2, 1.3, k % 2 ? 2 : 7);
     }
-    decor.rect(286, 160, 44, 1, 5, 1);
-    for (let k = 0; k < 10; k += 1) decor.put(288 + k * 4, 166 + (k % 2) * 2, 4);
-    // castle on the mountain
-    const cx0 = 352;
-    const cy0 = 82;
-    decor.rect(cx0, cy0 - 10, 22, 14, 6, 2);
-    for (const [tx, th] of [[cx0 - 3, 22], [cx0 + 21, 22], [cx0 + 9, 30]]) {
-      decor.rect(tx, cy0 - th + 4, 5, th, 6, 1);
-      decor.tri(tx - 1, cy0 - th + 4, tx + 6, cy0 - th + 4, tx + 2.5, cy0 - th - 4, 7, (a, b, c, px) => (px < tx + 2 ? 3 : 1));
-      decor.put(tx + 2, cy0 - th + 9, 8);
+    // trzciny na mokradłach
+    for (let k = 0; k < 40; k += 1) {
+      const rx = Math.round(290 + hash01(k * 5.1) * 120);
+      const ry = Math.round(170 + hash01(k * 9.7) * 70);
+      if (!inMarsh(rx, ry)) continue;
+      decor.rect(rx, ry - 4, 1, 4, 6, 1);
+      decor.rect(rx, ry - 5, 1, 2, 1, 1);
     }
-    decor.rect(cx0 + 8, cy0 - 3, 5, 7, 1, 0);
+    // Drzewo Licha
+    decor.capsule(352, 118, 352, 52, 9, 6, 1);
+    decor.capsule(352, 70, 330, 44, 3, 2, 1);
+    decor.capsule(352, 66, 378, 40, 3, 2, 1);
+    decor.ellipse(352, 40, 34, 22, 4);
+    decor.ellipse(330, 52, 16, 12, 4);
+    decor.ellipse(376, 50, 16, 12, 4);
+    decor.ellipse(345, 74, 2, 1.4, 5);
+    decor.ellipse(359, 74, 2, 1.4, 5);
+    decor.rect(348, 86, 8, 7, -1);
     g.drawImage(decor.render(mats, false), 0, 0);
+    // mgła nad mokradłami i poświata nad drzewem
+    for (let y = 150; y < H2; y += 2) for (let x = 270; x < W; x += 2) {
+      if (!inMarsh(x, y)) continue;
+      const f = noise2(x * 0.05, y * 0.08, 9);
+      if (f > 0.55 && (x + y) % 4 === 0) { g.fillStyle = 'rgba(230,240,240,0.35)'; g.fillRect(x, y, 2, 1); }
+    }
+    const glow = g.createRadialGradient(352, 44, 4, 352, 44, 60);
+    glow.addColorStop(0, 'rgba(200,120,255,0.35)');
+    glow.addColorStop(1, 'rgba(200,120,255,0)');
+    g.fillStyle = glow;
+    g.fillRect(290, 0, 110, 110);
     return base;
   }
 
@@ -4601,6 +4681,14 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   function drawMap() {
     if (!mapArt) mapArt = buildMapArt();
     ctx.drawImage(mapArt, 0, 0, BASE_W, BASE_H);
+    ctx.save();
+    ctx.textAlign = 'center';
+    drawOutlinedText('DRZEWO LICHA', 704, 262, 'bold 15px "Fredoka", sans-serif', '#E8C8FF', '#1A1030', 4);
+    drawOutlinedText('wkrótce', 704, 280, 'bold 12px "Fredoka", sans-serif', '#C8B0E8', '#1A1030', 3);
+    drawOutlinedText('MOKRADŁA I MGŁA', 700, 342, 'bold 15px "Fredoka", sans-serif', '#D8F0EC', '#10302E', 4);
+    drawOutlinedText('wkrótce', 700, 360, 'bold 12px "Fredoka", sans-serif', '#B8D8D4', '#10302E', 3);
+    drawOutlinedText('POLANA GRZYBÓW', 130, 300, 'bold 15px "Fredoka", sans-serif', '#FFF2B0', '#2A3A10', 4);
+    ctx.restore();
     const t = game.frame;
     // water glints
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
@@ -4754,7 +4842,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     const scale = spawn.boss ? 2 : 1;
     const hopper = spawn.kind === 'hopper';
     const baseSpeed = enemyBaseSpeed(spawn, levelIndex);
-    const hp = spawn.boss ? 3 : 1;
+    const hp = spawn.boss ? 6 : 1;
     return {
       x: spawn.x,
       y: spawn.y,
@@ -6071,6 +6159,8 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     popup(player.x - game.cameraX + PLAYER_W / 2, Math.max(60, player.y - 10), '-1 SERCE', '#FF6666');
     if (kind === 'persi') {
       setNotice('Z boku zabiera serce! Wskakuj wrogom na głowę.', '#FFBBBB', 140, 3, 'AU!');
+    } else if (kind === 'fala') {
+      setNotice('Fala uderzeniowa! Podskocz, gdy sunie po ziemi.', '#FFBBBB', 150, 3, 'AU!');
     } else if (kind === 'jez') {
       setNotice('Jeż ma kolce! Bobek, zryw albo tupnięcie – nie skacz mu na grzbiet.', '#FFBBBB', 170, 3, 'AU!');
     } else if (kind === 'szyszka') {
@@ -6080,7 +6170,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     } else if (kind === 'kapusta') {
       setNotice('Kapusta przejechała Puszka. Przeskakuj je!', '#FFBBBB', 140, 3, 'AU!');
     } else if (kind === 'wloczka') {
-      setNotice('Kłębek spadł na głowę! Uciekaj spod cieni.', '#FFBBBB', 140, 3, 'AU!');
+      setNotice('Zarodnik trafił! Uciekaj spod cieni i przed salwami.', '#FFBBBB', 140, 3, 'AU!');
     } else if (kind === 'kolce') {
       setNotice('Kolce kłują. Przeskocz je.', '#FFBBBB', 130, 3, 'AU!');
     } else {
@@ -6282,31 +6372,42 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   function updateBossAI(enemy, grounded) {
     const player = game.player;
     const rage = enemy.maxHp - enemy.hp;
+    if (enemy.counter && enemy.ai !== 'leap' && enemy.ai !== 'telegraph') enemy.counter = false;
+    if (enemy.counter) enemy.pooped = false;
+    const phase = enemy.hp > 4 ? 1 : enemy.hp > 2 ? 2 : 3;
+    if (enemy.lastPhase !== phase) {
+      if (enemy.lastPhase) setNotice(phase === 2 ? 'Król się złości! Fale przy lądowaniu – podskocz nad nimi!' : 'Ostatnia faza! Król przywołuje muchomorki.', '#FFB5B5', 220, 4, `FAZA ${phase}`);
+      enemy.lastPhase = phase;
+    }
     const playerCenter = player.x + PLAYER_W / 2;
     const bossCenter = enemy.x + enemy.w / 2;
     const toward = playerCenter < bossCenter ? -1 : 1;
     enemy.aiTimer -= 1;
     switch (enemy.ai) {
       case 'patrol': {
-        const speed = enemy.vx + rage * 0.25;
+        const speed = enemy.vx + rage * 0.22;
         enemy.x += enemy.facingLeft ? -speed : speed;
-        if (enemy.aiTimer <= 0 && grounded && Math.abs(playerCenter - bossCenter) < 560) {
+        if (enemy.aiTimer <= 0 && grounded && Math.abs(playerCenter - bossCenter) < 600) {
           enemy.ai = 'telegraph';
-          enemy.aiTimer = 50 - rage * 8;
+          enemy.aiTimer = Math.max(26, 50 - rage * 5);
           enemy.facingLeft = toward < 0;
           enemy.chargeDir = toward;
           audio.cue('meow');
+          if (phase >= 2 && Math.random() < 0.5) bossVolley(enemy);
         }
         break;
       }
       case 'telegraph':
         if (enemy.aiTimer <= 0) {
-          if (rage >= 1 && Math.random() < 0.45) {
+          enemy.counter = false;
+          if (phase === 3 && Math.random() < 0.35) bossSummon(enemy);
+          if (rage >= 1 && Math.random() < (phase >= 2 ? 0.55 : 0.4)) {
             enemy.ai = 'leap';
-            enemy.vy = -10.5;
+            enemy.vy = -10.5 - (phase === 3 ? 1.2 : 0);
             enemy.airborne = true;
-            enemy.leapVx = toward * (2.3 + rage * 0.4);
+            enemy.leapVx = toward * (2.3 + rage * 0.35);
             enemy.facingLeft = toward < 0;
+            enemy.leapsLeft = phase === 3 ? 1 : 0;
           } else {
             enemy.ai = 'charge';
             enemy.aiTimer = 90;
@@ -6314,13 +6415,13 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         }
         break;
       case 'charge': {
-        enemy.x += enemy.chargeDir * (3.3 + rage * 0.7);
+        enemy.x += enemy.chargeDir * (3.3 + rage * 0.45);
         if (game.frame % 3 === 0) emitDust(enemy.x + (enemy.chargeDir > 0 ? 0 : enemy.w), enemy.y + enemy.h - 4, 2);
         const hitWall = enemy.x <= enemy.minX || enemy.x + enemy.w >= enemy.maxX;
         if (hitWall || enemy.aiTimer <= 0) {
           enemy.ai = 'recover';
-          enemy.aiTimer = 54;
-          if (hitWall) triggerShake(4, 8);
+          enemy.aiTimer = phase === 1 ? 54 : 40;
+          if (hitWall) { triggerShake(4, 8); if (phase >= 2) bossShockwave(enemy); }
         }
         break;
       }
@@ -6334,7 +6435,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       default:
         if (enemy.aiTimer <= 0) {
           enemy.ai = 'patrol';
-          enemy.aiTimer = 130 - rage * 25;
+          enemy.aiTimer = Math.max(50, 130 - rage * 16);
           enemy.facingLeft = toward < 0;
         }
         break;
@@ -6382,8 +6483,22 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
           triggerShake(7, 16);
           audio.cue('stomp');
           if (enemy.ai === 'leap') {
-            enemy.ai = 'recover';
-            enemy.aiTimer = 46;
+            if (enemy.hp <= 4) bossShockwave(enemy);
+            if (enemy.leapsLeft > 0) {
+              enemy.leapsLeft -= 1;
+              enemy.vy = -9.5;
+              enemy.airborne = true;
+              enemy.leapVx = (game.player.x < enemy.x ? -1 : 1) * 3;
+            } else if (enemy.counter) {
+              // po kontrze: od razu szykuje atak, nietykalny aż do szarży
+              enemy.ai = 'telegraph';
+              enemy.aiTimer = enemy.hp <= 2 ? 18 : 24;
+              enemy.chargeDir = game.player.x + PLAYER_W / 2 < enemy.x + enemy.w / 2 ? -1 : 1;
+              enemy.facingLeft = enemy.chargeDir < 0;
+            } else {
+              enemy.ai = 'recover';
+              enemy.aiTimer = 46;
+            }
           }
         }
       }
@@ -6482,11 +6597,18 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       popupText = `TUP! ${popupText}`;
     }
     enemy.hp -= 1;
-    enemy.hitPause = enemy.boss ? 56 : 44;
+    enemy.hitPause = enemy.boss ? 10 : 44;
     enemy.pooped = false;
     if (enemy.boss) {
-      enemy.ai = 'recover';
-      enemy.aiTimer = 24;
+      // kontra: odskok od gracza, w 2. i 3. fazie z falą przy lądowaniu
+      enemy.ai = 'leap';
+      enemy.aiTimer = 0;
+      enemy.counter = true;
+      enemy.vy = enemy.airborne ? Math.max(enemy.vy, -3) : -10;
+      enemy.airborne = true;
+      enemy.leapVx = (game.player.x + PLAYER_W / 2 < enemy.x + enemy.w / 2 ? 1 : -1) * 5.2;
+      enemy.facingLeft = enemy.leapVx < 0;
+      enemy.leapsLeft = 0;
     }
     game.guide.enemyResolved = true;
     player.stompChain = (player.stompChain || 0) + 1;
@@ -6534,6 +6656,11 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       if (enemy.hp <= 0) continue;
       if (enemy.hitPause > 0 && !enemy.pooped) continue;
       if (!overlap(player.x + 4, player.y + 4, PLAYER_W - 8, PLAYER_H - 8, enemy.x, enemy.y, enemy.w, enemy.h)) continue;
+      if (enemy.boss && enemy.counter) {
+        player.vy = Math.min(player.vy, -6);
+        player.vx = player.x + PLAYER_W / 2 < enemy.x + enemy.w / 2 ? -4 : 4;
+        continue;
+      }
       const falling = player.vy > 0.8 && player.y + PLAYER_H < enemy.y + enemy.h * 0.6;
       if (enemy.kind === 'sleeper' && !enemy.pooped && enemy.sleepState !== 'chase') {
         if (falling) {
@@ -6577,6 +6704,12 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
           game.guide.bossDashShown = true;
           setNotice('Król jest za duży na zryw – skacz mu na kapelusz!', '#FFB5B5', 180, 3, 'HMM');
         }
+        continue;
+      }
+
+      if (enemy.boss && player.rolling) {
+        player.vx = player.x < enemy.x ? -5 : 5;
+        player.vy = -6;
         continue;
       }
 
@@ -6628,7 +6761,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         if (enemy.pooped || enemy.hp <= 0) continue;
         if (overlap(bullet.x - bullet.radius, bullet.y - bullet.radius, bullet.radius * 2, bullet.radius * 2, enemy.x, enemy.y, enemy.w, enemy.h)) {
           enemy.pooped = true;
-          enemy.poopTimer = enemy.boss ? 140 : 180;
+          enemy.poopTimer = enemy.boss ? 75 : 180;
           enemy.hitPause = 12;
           game.guide.enemyResolved = true;
           audio.cue('splat');
@@ -6832,7 +6965,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
 
     if (game.level.isBoss && game.enemies.length > 0 && !game.guide.bossIntroShown) {
       game.guide.bossIntroShown = true;
-      setNotice('Gdy pojawi się „!”, szykuje szarżę. Przeskocz go i wskocz mu na głowę 3 razy.', '#FFB5B5', 260, 4, 'FINAŁ');
+      setNotice('Gdy pojawi się „!”, szykuje szarżę. Przeskocz go i skacz mu na kapelusz – 6 razy!', '#FFB5B5', 260, 4, 'FINAŁ');
     }
   }
 
@@ -7486,7 +7619,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
 
   function drawEnemies() {
     for (const enemy of game.enemies) {
-      if (!enemy.pooped && enemy.hitPause > 0 && Math.floor(enemy.hitPause / 3) % 2 === 0) continue;
+      if (!enemy.pooped && (enemy.hitPause > 0 || enemy.counter) && Math.floor(game.frame / 3) % 2 === 0) continue;
       const hopper = enemy.kind === 'hopper';
       const grounded = enemy.standingPlatform >= 0;
       const bossWarn = enemy.boss && enemy.ai === 'telegraph' && !enemy.pooped;
@@ -8702,7 +8835,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     );
     drawInstructionRow(
       100, 310, 600, 26,
-      'NA PERSIEGO',
+      'NA WROGÓW',
       'W taranie wpadaj we wrogow z boku. Skok z gory i bobek nadal pomagaja.',
       '#FFB5B5'
     );
@@ -8738,7 +8871,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     ctx.restore();
     const lc = game.lastClear || { earned: [true, false, false], seconds: 0, carrots: 0, carrotsTotal: 0, diamonds: 0, diamondsTotal: 0, heartsLost: 0 };
     ctx.textAlign = 'center';
-    drawOutlinedText(game.level.isBoss ? 'WIELKI PERSI POKONANY!' : 'POZIOM ZALICZONY!', BASE_W / 2, 70, 'bold 30px monospace', '#FFD94A', '#3A2406', 6);
+    drawOutlinedText(game.level.isBoss ? 'KRÓL ODCZAROWANY!' : 'POZIOM ZALICZONY!', BASE_W / 2, 70, 'bold 30px monospace', '#FFD94A', '#3A2406', 6);
     ctx.fillStyle = '#CFE9FF';
     ctx.font = '14px monospace';
     ctx.fillText(levelName(game.level), BASE_W / 2, 94);
@@ -9045,6 +9178,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     drawDrops();
     drawRollers();
     drawP3Front();
+    drawBossExtras();
     drawDefeated();
     drawPlayer();
     drawGrassBlades(true);

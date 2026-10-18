@@ -193,6 +193,10 @@
     game.chaseX = source.chase ? source.startX - 360 : -1e9;
     game.vineHintShown = false;
     if (HERO === 'C') game.guide.doubleDone = true;
+    game.cpList = (source.checkpoints || []).map((c) => ({ ...c }));
+    game.cpIndex = 0;
+    game.bossWaves = [];
+    game.bossSpores = [];
   }
 
   function enemyBaseSpeed(spawn, levelIndex) {
@@ -312,6 +316,13 @@
 
   function updateP3() {
     const player = game.player;
+    // kolejne flagi w długich poziomach
+    if (game.cpList && game.checkpointActive && game.cpIndex + 1 < game.cpList.length && player.x > game.cpList[game.cpIndex + 1].x - 420) {
+      game.cpIndex += 1;
+      game.checkpoint = { ...game.cpList[game.cpIndex] };
+      game.checkpointActive = false;
+    }
+    updateBossExtras();
     if (game.magnet > 0) game.magnet -= 1;
     if (player.bubble > 0) player.bubble -= 1;
     // pnącza – podpowiedź
@@ -503,5 +514,77 @@
     if (player.dash > 0) {
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       for (let k = 0; k < 3; k += 1) ctx.fillRect(snap(drawX + (player.dashDir > 0 ? -16 - k * 14 : PLAYER_W + 6 + k * 14)), snap(drawY + 14 + k * 10), 12, 3);
+    }
+  }
+
+  // ---------- Grzybowy Król: fale uderzeniowe, salwy zarodników, pomocnicy ----------
+  function bossShockwave(enemy) {
+    const cx = enemy.x + enemy.w / 2;
+    game.bossWaves.push({ x: cx - 20, dir: -1, life: 120 }, { x: cx + 20, dir: 1, life: 120 });
+    audio.noise(0.4, 0.14, 'lowpass', 600, 80, 0, 0.8);
+  }
+  function bossVolley(enemy) {
+    const cx = enemy.x + enemy.w / 2;
+    const p = game.player;
+    const n = 3;
+    for (let k = 0; k < n; k += 1) {
+      const tx = p.x + PLAYER_W / 2 + (k - 1) * 90;
+      game.bossSpores.push({ x: cx, y: enemy.y + 10, vx: clamp((tx - cx) / 56, -6, 6), vy: -8.5 - k * 0.4, life: 300 });
+    }
+    audio.tone(300, 0.18, 'sawtooth', 0.06, 160, 0);
+  }
+  function bossSummon(enemy) {
+    const minions = game.enemies.filter((e) => !e.boss && e.hp > 0).length;
+    if (minions >= 2) return;
+    const side = Math.random() < 0.5 ? enemy.minX + 10 : enemy.maxX - 60;
+    const e = createEnemy(makeEnemySpawn(side, H - TILE - CAT_H - 200, enemy.minX, enemy.maxX, false, 'walker'), game.levelIndex);
+    e.vy = 2;
+    game.enemies.push(e);
+    emitSpark(side + 24, H - TILE - 60, '#C86AA8', 16);
+    setNotice('Król przywołał muchomorki!', '#F4C8E8', 120, 2, 'UWAGA');
+  }
+  function updateBossExtras() {
+    const player = game.player;
+    game.bossWaves = game.bossWaves.filter((w) => {
+      w.x += w.dir * 5.2;
+      w.life -= 1;
+      const ground = H - TILE;
+      const onGround = player.y + PLAYER_H >= ground - 6;
+      if (onGround && Math.abs(player.x + PLAYER_W / 2 - w.x) < 22 && player.invul <= 0) damagePlayer('fala');
+      return w.life > 0 && w.x > 0 && w.x < game.level.worldWidth;
+    });
+    game.bossSpores = game.bossSpores.filter((s) => {
+      s.vy = Math.min(9, s.vy + 0.3);
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life -= 1;
+      if (s.y > H - TILE - 10) { emitSpark(s.x, H - TILE - 6, '#C86AA8', 6); return false; }
+      for (const p of game.platforms) if (s.x > p.x && s.x < p.x + p.w && s.y + 8 >= p.y && s.y + 8 <= p.y + 14 && s.vy > 0) { emitSpark(s.x, p.y, '#C86AA8', 6); return false; }
+      if (overlap(player.x + 8, player.y + 6, PLAYER_W - 16, PLAYER_H - 10, s.x - 8, s.y - 8, 16, 16)) {
+        if (player.invul <= 0) damagePlayer('wloczka');
+        return false;
+      }
+      return s.life > 0;
+    });
+  }
+  function drawBossExtras() {
+    for (const w of game.bossWaves) {
+      const x = snap(w.x - game.cameraX);
+      const ground = H - TILE;
+      const a = Math.min(1, w.life / 30);
+      ctx.fillStyle = `rgba(200,150,90,${0.85 * a})`;
+      ctx.fillRect(x - 12, ground - 18, 24, 18);
+      ctx.fillStyle = `rgba(255,230,180,${0.9 * a})`;
+      ctx.fillRect(x - 8, ground - 26, 16, 8);
+      ctx.fillRect(x - (w.dir > 0 ? 18 : -10), ground - 10, 8, 10);
+    }
+    for (const s of game.bossSpores) {
+      const x = snap(s.x - game.cameraX);
+      ctx.fillStyle = '#5A2A4A';
+      ctx.fillRect(x - 8, snap(s.y) - 8, 16, 16);
+      ctx.fillStyle = '#E28AC8';
+      ctx.fillRect(x - 6, snap(s.y) - 6, 12, 12);
+      ctx.fillStyle = '#FFE0F4';
+      ctx.fillRect(x - 3, snap(s.y) - 4, 4, 4);
     }
   }
