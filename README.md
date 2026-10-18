@@ -3,7 +3,7 @@
 Pixel-artowa platformówka w **jednym pliku HTML**: bez instalacji i bez bibliotek, działa w przeglądarce na komputerze i telefonie.
 Bohaterowie mają prawdziwe pierwowzory: królika **Puszka** (biały, z grzywką i krótkimi brzoskwiniowymi uszkami) i kota **Persiego** (bury tygrysek z literą „M” na czole).
 
-### ▶ [Zagraj](https://mariuszbelka.github.io/przygody-krolika/)  ·  🧩 [Przygoda 2: Sroka Złodziejka](https://mariuszbelka.github.io/przygody-krolika/przygoda2/)
+### ▶ [Zagraj](https://mariuszbelka.github.io/przygody-krolika/)  ·  🧩 [Przygoda 2: Sroka Złodziejka](https://mariuszbelka.github.io/przygody-krolika/przygoda2/)  ·  🌲 [Przygoda 3: Zaczarowany Las](https://mariuszbelka.github.io/przygody-krolika/przygoda3/)
 
 ![Menu](docs/menu.png)
 
@@ -84,3 +84,30 @@ Gra ma 15 pokoi w 4 krainach (Ogród, Szopa, Piwnica, Wieża Sroki).
 Każdy pokój sprawdza solver BFS (`przygoda2/tools/solve.js`). Ten sam plik `rules.js` steruje grą i solverem.
 Solver wyznacza też liczbę ruchów „mistrza”: minimum +10%.
 `tools/check.js` sprawdza, czy skrzynki, nory i ziemia są w pokoju naprawdę potrzebne.
+
+## Przygoda 3: Zaczarowany Las (`/przygoda3/`)
+Szybka platformówka na silniku z części 1. Na starcie wybierasz, czy grasz Puszkiem, czy Persim:
+
+| | Umiejętności |
+|---|---|
+| **Puszek** | podwójny skok, bobki, tupnięcie |
+| **Persi** | szybszy, skacze wyżej, wspina się po pnączach, zryw z pazurkami przebija wrogów |
+
+Leśne Licho zaczarowało las. Pokonani wrogowie zostają **odczarowani**.
+
+| Wróg | Uwaga |
+|---|---|
+| muchomorki | – |
+| żabki | – |
+| jeże | nie wolno skakać im na grzbiet |
+| wiewiórki | rzucają szyszkami |
+| Bzyczki | – |
+| boss Grzybowy Król | – |
+
+**Zbieranie:** dużo żołędzi z mnożnikiem serii, słoiki ze świetlikami (gwiazdka), złote żołędzie w sekretach.
+**Moce:** magnes, bańka, Turbo-marchew. Po trafieniu żołędzie się rozsypują i można je odzyskać.
+**Kraina 1, Polana Grzybów:** Leśna ścieżka, Korony drzew, Jeżynowy gąszcz, pościg Wiatrołom i finał z Grzybowym Królem.
+
+Poziomy sprawdza walidator osiągalności dla obu postaci (`przygoda3/tools/validate3.js`).
+Bot przeszedł każdy poziom obiema postaciami bez utraty serca.
+Ranking działa z tym samym kodem `?ekipa=`, ale osobno dla części 3.
