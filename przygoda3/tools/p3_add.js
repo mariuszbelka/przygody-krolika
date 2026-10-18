@@ -3,14 +3,39 @@
   // =====================================================================
   let HERO = safeLoadText('PuszekP3Hero', 'P') === 'C' ? 'C' : 'P';
   const HERO_NAME = () => (HERO === 'C' ? 'Persi' : 'Puszek');
-  function heroSpeed() { return HERO === 'C' ? 1.12 : 1; }
+  let MODE = safeLoadText('PuszekP3Mode', 'C') === 'S' ? 'S' : 'C';
+  const CALM = () => MODE === 'S';
+  const MODE_TAG = () => (MODE === 'S' ? 'P3S ' : 'P3 ');
+  function heroSpeed() { return (HERO === 'C' ? 1.12 : 1) * (game.player && game.player.inMud ? 0.55 : 1); }
+  const WORLDS = [
+    { name: 'Polana Grzybów', start: 0, end: 4 },
+    { name: 'Mokradła i Mgła', start: 5, end: 8 },
+    { name: 'Drzewo Licha', start: 9, end: 12 }
+  ];
+  function worldOf(index) { return WORLDS.findIndex((w) => index >= w.start && index <= w.end); }
+  const BOSS_INFO = {
+    king: { art: 'boss', name: 'Grzybowy Król', head: 'kapelusz', done: 'KRÓL ODCZAROWANY!', freed: 'Grzybowy Król odczarowany! Droga na mokradła wolna.',
+      drops: 'Grzybowy Król sypie zarodnikami! Uciekaj spod cieni.', summon: 'Król przywołał muchomorki!', hp: [4, 6],
+      p2: 'Król się złości! Fale przy lądowaniu – podskocz nad nimi!', p3: 'Ostatnia faza! Król przywołuje muchomorki.' },
+    toad: { art: 'toad', name: 'Ropuch Mgielnik', head: 'grzbiet', done: 'ROPUCH ODCZAROWANY!', freed: 'Ropuch odczarowany! Mgła się rozwiewa.',
+      drops: 'Z gałęzi kapie błoto! Uciekaj spod cieni.', summon: 'Ropuch woła żabki!', hp: [5, 7],
+      p2: 'Ropuch się złości! Skacze dalej i pluje częściej.', p3: 'Ostatnia faza! Ropuch woła żabki na pomoc.' },
+    licho: { art: 'licho', name: 'Leśne Licho', head: 'głowę', done: 'LICHO ODCZAROWANE!', freed: 'Leśne Licho znów jest dobrym duchem lasu!',
+      drops: 'Licho strąca ogniki z koron! Uciekaj spod cieni.', summon: 'Licho budzi Korzeniaki!', hp: [6, 8],
+      p2: 'Licho się gniewa! Znika i pojawia się tuż obok.', p3: 'Ostatnia faza! Spod ziemi wychodzą Korzeniaki.' }
+  };
+  function BOSS(index) { const L = LEVELS[index == null ? game.levelIndex : index]; return BOSS_INFO[(L && L.bossKind) || 'king']; }
+  function bossMaxHp(index) { return BOSS(index).hp[CALM() ? 0 : 1]; }
+  function bossPhase(enemy) { return enemy.hp > enemy.maxHp * 2 / 3 ? 1 : enemy.hp > enemy.maxHp / 3 ? 2 : 3; }
   function syncHeroUi() {
     document.querySelectorAll('#heroRow button').forEach((b) => b.classList.toggle('on', b.dataset.hero === HERO));
+    document.querySelectorAll('#modeRow button').forEach((b) => b.classList.toggle('on', b.dataset.mode === MODE));
     const cap = document.getElementById('heroCap');
     if (cap) {
-      cap.textContent = HERO === 'C'
+      cap.textContent = (HERO === 'C'
         ? 'Persi: szybszy, wyżej skacze, wspina się po pnączach (trzymaj skok), X – zryw z pazurkami.'
-        : 'Puszek: podwójny skok, X – rzut bobkiem, w locie ↓ – tupnięcie.';
+        : 'Puszek: podwójny skok, X – rzut bobkiem, w locie ↓ – tupnięcie.')
+        + (MODE === 'S' ? ' Spokojnie: wolniejsi wrogowie, słabsi bossowie, upadek nie zabiera serca.' : ' Czadowo: pełna trudność.');
     }
     const sb = document.getElementById('mobileShootBtn');
     if (sb) sb.innerHTML = HERO === 'C' ? 'ZRYW' : 'BOBEK';
@@ -23,6 +48,16 @@
   }
   document.querySelectorAll('#heroRow button').forEach((b) => {
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); setHero(b.dataset.hero); });
+  });
+  function setMode(m) {
+    MODE = m === 'S' ? 'S' : 'C';
+    safeSave('PuszekP3Mode', MODE);
+    syncHeroUi();
+    audio.tone(MODE === 'S' ? 520 : 780, 0.1, 'triangle', 0.07, MODE === 'S' ? 440 : 1040, 0);
+    if (typeof fetchLeaderboard === 'function') try { fetchLeaderboard(); } catch (e) { /* ranking offline */ }
+  }
+  document.querySelectorAll('#modeRow button').forEach((b) => {
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); setMode(b.dataset.mode); });
   });
   syncHeroUi();
 
@@ -86,7 +121,11 @@
       hedgehog: [['#7A5A3E', '#24160C'], ['#E8C8A0', '#4A2E18'], ['#FFFFFF', null], ['#1A1420', null], ['#4A321E', '#1A0E06']],
       squirrel: [['#D9762E', '#4A1E06'], ['#F4D8B0', '#4A2E18'], ['#FFFFFF', null], ['#1A1420', null], ['#B85A1E', '#3A1606']],
       bee: [['#FFD23A', '#3A2A06'], ['#2A2230', '#120E16'], ['#FFFFFF', null], ['#1A1420', null], ['#DDEEFF', '#7A8AA8']],
-      boss: [['#B8402E', '#3A0E08'], ['#F0E2C4', '#4A3A2A'], ['#FFFFFF', null], ['#1A1420', null], ['#FFC62E', '#5A3A06']]
+      boss: [['#B8402E', '#3A0E08'], ['#F0E2C4', '#4A3A2A'], ['#FFFFFF', null], ['#1A1420', null], ['#FFC62E', '#5A3A06']],
+      root: [['#7A5432', '#2A160A'], ['#4E8A3E', '#163A14'], ['#FFE65A', null], ['#1A1420', null], ['#5A3A20', '#1E1006']],
+      owl: [['#8A6A4E', '#2A1A0E'], ['#E8D2A8', '#4A3420'], ['#FFD84A', null], ['#1A1420', null], ['#5E4632', '#1E120A']],
+      toad: [['#6E8A3A', '#1E2A0A'], ['#D8D08A', '#3A3A16'], ['#FFE070', null], ['#1A1420', null], ['#8A5A2E', '#2A1606']],
+      licho: [['#3E5A3A', '#0E1A0E'], ['#6A4A2E', '#1E1208'], ['#C89AFF', null], ['#100818', null], ['#9AE07A', '#1E3A14']]
     };
     return (pals[kind] || pals.walker).map(([c, o], i) => (i === 2 || i === 3) ? makeMat(c, null, { flat: true }) : makeMat(c, o));
   }
@@ -169,6 +208,62 @@
       g.ellipse(X(11 + step), Y(20.5), 2, 1, 4);
       g.ellipse(X(16 - step), Y(20.5), 2, 1, 4);
       if (warn) g.ellipse(X(20), Y(12), 2, 2, 4);
+    } else if (kind === 'root') {
+      const up = warn ? -1 : 0;
+      g.ellipse(X(12), Y(13 + up), 6.4, 8, 0);
+      g.pattern(0, (x, y) => (x * 3 + y) % 7 === 0, -1);
+      g.capsule(X(6), Y(11 + up), X(1), Y(6 + up - step), 1.6, 1, 0);
+      g.capsule(X(18), Y(11 + up), X(23), Y(6 + up + step), 1.6, 1, 0);
+      g.ellipse(X(12), Y(4.5 + up), 5.4, 2.6, 1);
+      g.put(X(9), Y(2 + up), 1); g.put(X(15), Y(2.4 + up), 1);
+      eye(9.8, 11 + up, 1.1);
+      eye(14.2, 11 + up, 1.1);
+      g.rect(X(10), Y(15 + up), 4, 1, 3);
+      g.capsule(X(9), Y(19), X(6 + step), Y(21), 1.2, 1, 4);
+      g.capsule(X(15), Y(19), X(18 - step), Y(21), 1.2, 1, 4);
+    } else if (kind === 'owl') {
+      const flap = frame ? 3 : 0;
+      g.ellipse(X(12), Y(12), 7.4, 8.6, 0);
+      g.ellipse(X(12), Y(15), 4.6, 5.4, 1);
+      g.pattern(1, (x, y) => (x + y * 2) % 5 === 0, 4);
+      g.ellipse(X(9), Y(8.6), 3, 3, 1);
+      g.ellipse(X(15), Y(8.6), 3, 3, 1);
+      eye(9, 8.6, 1.7);
+      eye(15, 8.6, 1.7);
+      g.tri(X(11), Y(10.6), X(13), Y(10.6), X(12), Y(12.6), 2, 2);
+      g.tri(X(6), Y(4), X(8), Y(5), X(6.4), Y(1.6), 0, 1);
+      g.tri(X(16), Y(5), X(18), Y(4), X(17.6), Y(1.6), 0, 1);
+      g.capsule(X(5), Y(11), X(-1), Y(14 - flap * (air ? 0 : 1) + (air ? 4 : 0)), 2, 1.2, 4);
+      g.capsule(X(19), Y(11), X(25), Y(14 - flap * (air ? 0 : 1) + (air ? 4 : 0)), 2, 1.2, 4);
+      g.rect(X(10), Y(20), 1.4, 1.4, 2); g.rect(X(13), Y(20), 1.4, 1.4, 2);
+    } else if (kind === 'toad') {
+      const sq = warn ? 1.4 : air ? -1 : 0;
+      g.ellipse(X(12), Y(14 + sq * 0.6), 11.4, 7.2 - sq * 0.5, 0);
+      g.ellipse(X(12), Y(17 + sq * 0.4), 8, 3.6, 1);
+      g.ellipse(X(6.5), Y(8 + sq), 3.4, 3.2, 0);
+      g.ellipse(X(17.5), Y(8 + sq), 3.4, 3.2, 0);
+      eye(6.5, 7.6 + sq, 1.8);
+      eye(17.5, 7.6 + sq, 1.8);
+      [[4, 13], [9, 11], [15, 11], [20, 13], [12, 9.5]].forEach(([x, y]) => g.ellipse(X(x), Y(y + sq * 0.6), 1.2, 1, 4));
+      g.rect(X(7), Y(14 + sq * 0.6), 10, 0.8, 3, 2);
+      if (air) { g.capsule(X(3), Y(18), X(-1), Y(21), 1.6, 1.2, 0); g.capsule(X(21), Y(18), X(25), Y(21), 1.6, 1.2, 0); }
+      else { g.ellipse(X(3), Y(20.4), 3.6, 1.4, 0); g.ellipse(X(21), Y(20.4), 3.6, 1.4, 0); }
+      g.rect(X(8), Y(1 + sq), 8, 1.6, 2); g.put(X(8), Y(0 + sq), 2); g.put(X(12), Y(-1 + sq), 2); g.put(X(15.6), Y(0 + sq), 2);
+    } else if (kind === 'licho') {
+      const sway = warn ? 1 : step * 0.5;
+      g.ellipse(X(12), Y(13), 8.4, 9.4, 0);
+      g.pattern(0, (x, y) => (x * 5 + y * 3) % 11 === 0, 4);
+      g.ellipse(X(12), Y(20.5), 9.4, 1.6, 0);
+      g.capsule(X(7), Y(5), X(2 - sway), Y(-3), 1.2, 0.8, 1);
+      g.capsule(X(4), Y(1), X(0), Y(1), 0.9, 0.7, 1);
+      g.capsule(X(17), Y(5), X(22 + sway), Y(-3), 1.2, 0.8, 1);
+      g.capsule(X(20), Y(1), X(24), Y(1), 0.9, 0.7, 1);
+      g.ellipse(X(12), Y(11), 5.4, 4.4, 3);
+      eye(9.8, 11, 1.4);
+      eye(14.2, 11, 1.4);
+      g.rect(X(10), Y(14.6), 4, 0.8, 2, 2);
+      g.capsule(X(4), Y(12), X(-1), Y(17 + sway), 1.6, 1, 0);
+      g.capsule(X(20), Y(12), X(25), Y(17 - sway), 1.6, 1, 0);
     } else if (kind === 'bee') {
       const wing = frame ? -2 : 0;
       g.ellipse(X(8), Y(5 + wing), 4.4, 3, 4, 0, true);
@@ -197,16 +292,136 @@
     game.cpIndex = 0;
     game.bossWaves = [];
     game.bossSpores = [];
+    game.mud = (source.mud || []).map((m) => ({ ...m }));
+    game.rootHintShown = false;
+    game.owlHintShown = false;
+    game.mudHintShown = false;
   }
 
   function enemyBaseSpeed(spawn, levelIndex) {
-    if (spawn.boss) return 1.16;
+    const k = CALM() ? 0.8 : 1;
+    if (spawn.boss) return 1.16 * (CALM() ? 0.88 : 1);
     switch (spawn.kind) {
-      case 'hopper': return 0.72;
-      case 'hedgehog': return 0.7;
+      case 'hopper': return 0.72 * k;
+      case 'hedgehog': return 0.7 * k;
       case 'squirrel': return 0.32;
-      case 'bee': return 1.15;
-      default: return 0.88 + levelIndex * 0.03;
+      case 'bee': return 1.15 * k;
+      case 'owl': return 1.05 * k;
+      case 'root': return 0.82 * k;
+      default: return (0.88 + Math.min(4, levelIndex) * 0.03) * k;
+    }
+  }
+
+  // ---------- Korzeniak: śpi pod ziemią, drży i wyskakuje ----------
+  function updateRoot(enemy) {
+    if (enemy.rootState === undefined) { enemy.rootState = 'hidden'; enemy.hidden = true; enemy.rootT = 0; }
+    const p = game.player;
+    const dx = Math.abs(p.x + PLAYER_W / 2 - (enemy.x + enemy.w / 2));
+    if (enemy.rootState === 'hidden') {
+      enemy.hidden = true;
+      if (dx < 170 && Math.abs(p.y - enemy.y) < 170) {
+        enemy.rootState = 'rumble';
+        enemy.rootT = CALM() ? 62 : 44;
+        audio.noise(0.5, 0.08, 'lowpass', 300, 90, 0, 0.6);
+        if (!game.rootHintShown) {
+          game.rootHintShown = true;
+          setNotice('Ziemia drży – zaraz wyskoczy Korzeniak! Odsuń się albo tupnij w kopczyk.', '#E8D8B0', 200, 3, 'KORZENIAK');
+        }
+      }
+      return true;
+    }
+    if (enemy.rootState === 'rumble') {
+      enemy.rootT -= 1;
+      if (game.frame % 4 === 0) emitDust(enemy.x + enemy.w / 2 + (Math.random() - 0.5) * 34, enemy.y + enemy.h - 4, 2);
+      if (enemy.rootT <= 0) rootPop(enemy);
+      return true;
+    }
+    enemy.rootT += 1;
+    if (enemy.rootT > 480 && dx > 340 && enemy.standingPlatform >= 0 && !enemy.pooped) {
+      enemy.rootState = 'hidden';
+      enemy.hidden = true;
+      emitDust(enemy.x + enemy.w / 2, enemy.y + enemy.h - 4, 8);
+      return true;
+    }
+    return false;
+  }
+  function rootPop(enemy) {
+    enemy.rootState = 'up';
+    enemy.hidden = false;
+    enemy.rootT = 0;
+    enemy.vy = -6.5;
+    enemy.airborne = true;
+    enemy.facingLeft = game.player.x < enemy.x;
+    triggerShake(3, 8);
+    emitDust(enemy.x + enemy.w / 2, enemy.y + enemy.h - 4, 12);
+    audio.cue('stomp');
+  }
+
+  // ---------- Sowa: krąży wysoko, cień ostrzega przed pikowaniem ----------
+  function updateOwl(enemy) {
+    if (enemy.baseY === undefined) { enemy.baseY = enemy.y; enemy.t = Math.random() * 100; enemy.owlState = 'patrol'; enemy.owlCool = 90; }
+    enemy.t += 1;
+    enemy.walkTick += 1;
+    if (enemy.walkTick >= (enemy.owlState === 'dive' ? 99 : 6)) { enemy.walkTick = 0; enemy.walkFrame ^= 1; }
+    if (enemy.hitPause > 0) { enemy.hitPause -= 1; return; }
+    if (enemy.pooped) {
+      enemy.poopTimer -= 1;
+      enemy.y = Math.min(enemy.baseY + 60, enemy.y + 0.8);
+      enemy.owlState = 'patrol';
+      if (enemy.poopTimer <= 0) enemy.pooped = false;
+      return;
+    }
+    const p = game.player;
+    const pc = p.x + PLAYER_W / 2;
+    const oc = enemy.x + enemy.w / 2;
+    switch (enemy.owlState) {
+      case 'patrol': {
+        enemy.x += enemy.facingLeft ? -enemy.vx : enemy.vx;
+        if (enemy.x <= enemy.minX) { enemy.x = enemy.minX; enemy.facingLeft = false; }
+        if (enemy.x + enemy.w >= enemy.maxX) { enemy.x = enemy.maxX - enemy.w; enemy.facingLeft = true; }
+        const target = enemy.baseY + Math.sin(enemy.t * 0.05) * 14;
+        enemy.y += (target - enemy.y) * 0.15;
+        enemy.owlCool -= 1;
+        if (enemy.owlCool <= 0 && Math.abs(pc - oc) < 230 && p.y > enemy.y + 60 && p.onGround) {
+          enemy.owlState = 'aim';
+          enemy.owlT = CALM() ? 54 : 38;
+          enemy.tx = pc;
+          enemy.ty = p.y + PLAYER_H;
+          enemy.facingLeft = pc < oc;
+          audio.tone(700, 0.12, 'sine', 0.06, 420, 0);
+          if (!game.owlHintShown) {
+            game.owlHintShown = true;
+            setNotice('Sowa celuje! Gdy na ziemi pojawi się cień, uskocz w bok.', '#D8D0FF', 200, 3, 'SOWA');
+          }
+        }
+        break;
+      }
+      case 'aim':
+        enemy.owlT -= 1;
+        enemy.tx += (pc - enemy.tx) * (enemy.owlT > 14 ? 0.08 : 0);
+        if (enemy.owlT <= 0) {
+          enemy.owlState = 'dive';
+          const dx = enemy.tx - oc;
+          const dy = (enemy.ty - enemy.h) - enemy.y;
+          const d = Math.max(1, Math.hypot(dx, dy));
+          const sp = CALM() ? 6 : 7.4;
+          enemy.dvx = dx / d * sp;
+          enemy.dvy = dy / d * sp;
+          audio.noise(0.25, 0.08, 'bandpass', 900, 2400, 0, 1);
+        }
+        break;
+      case 'dive':
+        enemy.x += enemy.dvx;
+        enemy.y += enemy.dvy;
+        if (enemy.y + enemy.h >= enemy.ty - 2) {
+          enemy.owlState = 'rise';
+          emitDust(enemy.x + enemy.w / 2, enemy.ty - 4, 6);
+        }
+        break;
+      default:
+        enemy.y += (enemy.baseY - enemy.y) * 0.05 - 0.6;
+        if (enemy.y <= enemy.baseY + 4) { enemy.owlState = 'patrol'; enemy.owlCool = CALM() ? 200 : 140; }
+        break;
     }
   }
 
@@ -259,6 +474,16 @@
       game.particles.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, color: ['#FFF6A8', '#9AF0FF', '#FFB8F0', '#FFFFFF'][k % 4], life: 34 + Math.random() * 20, size: 3 });
     }
     if (!enemy.boss) popup(cx - game.cameraX, enemy.y - 26, 'ODCZAROWANY!', '#B8F4FF');
+    if (enemy.boss) {
+      // pokonany boss odczarowuje swoich pomocników
+      for (const e of game.enemies) {
+        if (e === enemy || e.hp <= 0) continue;
+        e.hp = 0;
+        for (let k = 0; k < 10; k += 1) game.particles.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, vx: (Math.random() - 0.5) * 4, vy: -Math.random() * 3, color: '#FFF6A8', life: 30, size: 3 });
+      }
+      game.bossSpores = [];
+      game.bossWaves = [];
+    }
     audio.tone(880, 0.1, 'sine', 0.06, 1320, 0.05);
     audio.tone(1320, 0.14, 'sine', 0.05, 1760, 0.12);
   }
@@ -297,6 +522,19 @@
       return;
     }
     player.climbing = false;
+    player.inMud = false;
+    if (player.onGround && game.mud && game.mud.length) {
+      const cx = player.x + PLAYER_W / 2;
+      const feet = player.y + PLAYER_H;
+      if (feet >= H - TILE - 4 && feet <= H - TILE + 6 && game.mud.some((m) => cx > m.x && cx < m.x + m.w)) {
+        player.inMud = true;
+        if (Math.abs(player.vx) > 0.3 && game.frame % 6 === 0) game.particles.push({ x: cx + (Math.random() - 0.5) * 20, y: feet - 4, vx: (Math.random() - 0.5) * 2, vy: -1.6, color: '#6A4A2A', life: 18, size: 3 });
+        if (!game.mudHintShown) {
+          game.mudHintShown = true;
+          setNotice('Błoto! Tu biegniesz wolniej i skaczesz niżej.', '#E8D0A8', 150, 2, 'CHLAP');
+        }
+      }
+    }
     if (HERO !== 'C' || !game.vines || !game.vines.length) return;
     const cx = player.x + PLAYER_W / 2;
     const feet = player.y + PLAYER_H;
@@ -381,7 +619,7 @@
     // pościg
     if (game.level.chase && !game.celebrate) {
       const ch = game.level.chase;
-      if (game.levelFrames > (ch.delay || 150) && player.x < game.level.exitX - 160) game.chaseX += ch.speed;
+      if (game.levelFrames > (ch.delay || 150) + (CALM() ? 60 : 0) && player.x < game.level.exitX - 160) game.chaseX += ch.speed * (CALM() ? 0.8 : 1);
       if (game.levelFrames % 50 === 0 && game.chaseX > game.cameraX - 200) triggerShake(2, 6);
       if (player.x < game.chaseX + 30) {
         if (player.invul <= 0) damagePlayer('wiatrolom');
@@ -393,7 +631,55 @@
     }
   }
 
+  function drawChaseWall(kind) {
+    const sx = game.chaseX - game.cameraX;
+    if (sx < -260) return;
+    const mud = kind === 'mud';
+    ctx.save();
+    const grad = ctx.createLinearGradient(sx - 300, 0, sx + 40, 0);
+    grad.addColorStop(0, mud ? 'rgba(70,46,26,0.92)' : 'rgba(40,14,60,0.92)');
+    grad.addColorStop(1, mud ? 'rgba(70,46,26,0)' : 'rgba(40,14,60,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(sx - 300, 0, 340, BASE_H);
+    for (let y = 0; y < BASE_H; y += 12) {
+      const wob = Math.sin(y * 0.06 + game.frame * 0.12) * 14 + Math.sin(y * 0.15 - game.frame * 0.2) * 6;
+      ctx.fillStyle = mud ? (y % 24 ? '#5A3A1E' : '#7A5430') : (y % 24 ? '#3A1A4A' : '#5A2A6A');
+      ctx.fillRect(snap(sx - 60 + wob), y, 60, 12);
+      if (!mud && (y / 12) % 3 === 0) {
+        ctx.fillStyle = '#C89AFF';
+        ctx.fillRect(snap(sx + wob), y + 4, 14, 3);
+        ctx.fillRect(snap(sx + 10 + wob), y + 1, 3, 9);
+      }
+      if (mud && (y / 12) % 4 === 1) {
+        ctx.fillStyle = '#9A7448';
+        ctx.fillRect(snap(sx - 4 + wob), y + 2, 10, 6);
+      }
+    }
+    for (let k = 0; k < 14; k += 1) {
+      const t = game.frame * 0.06 + k * 1.9;
+      const lx = sx + Math.sin(t) * 30 - (k % 4) * 18;
+      const ly = (k * 61 + game.frame * (1.5 + (k % 3))) % (BASE_H - 30);
+      ctx.fillStyle = mud ? '#6A4A2A' : (k % 2 ? '#9AE07A' : '#C89AFF');
+      ctx.fillRect(snap(lx), snap(ly), mud ? 7 : 4, mud ? 7 : 4);
+    }
+    ctx.restore();
+  }
+
   function drawP3Back() {
+    const ground = H - TILE;
+    for (const m of game.mud || []) {
+      const x = snap(m.x - game.cameraX);
+      if (x > BASE_W + 20 || x + m.w < -20) continue;
+      ctx.fillStyle = '#4A3018';
+      ctx.fillRect(x, ground - 4, m.w, 12);
+      ctx.fillStyle = '#6A4626';
+      ctx.fillRect(x + 6, ground - 6, m.w - 12, 6);
+      ctx.fillStyle = '#8A6238';
+      for (let k = 0; k < m.w / 24; k += 1) {
+        const ph = (game.frame * 0.04 + k * 1.7) % 3;
+        if (ph < 1) ctx.fillRect(x + 10 + k * 22, ground - 8 - Math.round(ph * 3), 4, 4);
+      }
+    }
     for (const v of game.vines || []) {
       const x = snap(v.x - game.cameraX);
       if (x < -30 || x > BASE_W + 30) continue;
@@ -463,6 +749,7 @@
         ctx.fillRect(snap(cx + Math.cos(a) * r), snap(cy + Math.sin(a) * r * 0.6), 3, 3);
       }
     }
+    if (game.level.chase && game.level.chase.kind) { drawChaseWall(game.level.chase.kind); return; }
     // pościg: wiatrołom – toczący się pień i burza liści
     if (game.level.chase) {
       const sx = game.chaseX - game.cameraX;
@@ -529,19 +816,28 @@
     const n = 3;
     for (let k = 0; k < n; k += 1) {
       const tx = p.x + PLAYER_W / 2 + (k - 1) * 90;
-      game.bossSpores.push({ x: cx, y: enemy.y + 10, vx: clamp((tx - cx) / 56, -6, 6), vy: -8.5 - k * 0.4, life: 300 });
+      game.bossSpores.push({ x: cx, y: enemy.y + 10, vx: clamp((tx - cx) / 56, -6, 6), vy: -8.5 - k * 0.4, life: 300, kind: game.level.bossKind || 'king' });
     }
     audio.tone(300, 0.18, 'sawtooth', 0.06, 160, 0);
   }
   function bossSummon(enemy) {
     const minions = game.enemies.filter((e) => !e.boss && e.hp > 0).length;
     if (minions >= 2) return;
-    const side = Math.random() < 0.5 ? enemy.minX + 10 : enemy.maxX - 60;
-    const e = createEnemy(makeEnemySpawn(side, H - TILE - CAT_H - 200, enemy.minX, enemy.maxX, false, 'walker'), game.levelIndex);
-    e.vy = 2;
+    const bk = game.level.bossKind || 'king';
+    let e;
+    if (bk === 'licho') {
+      const px = game.player.x + PLAYER_W / 2;
+      const side = clamp(px + (Math.random() < 0.5 ? -150 : 150), enemy.minX + 10, enemy.maxX - 60);
+      e = createEnemy(makeEnemySpawn(side, ONP(1), enemy.minX, enemy.maxX, false, 'root'), game.levelIndex);
+      emitSpark(side + 24, H - TILE - 10, '#9AE07A', 12);
+    } else {
+      const side = Math.random() < 0.5 ? enemy.minX + 10 : enemy.maxX - 60;
+      e = createEnemy(makeEnemySpawn(side, H - TILE - CAT_H - 200, enemy.minX, enemy.maxX, false, bk === 'toad' ? 'hopper' : 'walker'), game.levelIndex);
+      e.vy = 2;
+      emitSpark(side + 24, H - TILE - 60, bk === 'toad' ? '#9AE07A' : '#C86AA8', 16);
+    }
     game.enemies.push(e);
-    emitSpark(side + 24, H - TILE - 60, '#C86AA8', 16);
-    setNotice('Król przywołał muchomorki!', '#F4C8E8', 120, 2, 'UWAGA');
+    setNotice(BOSS().summon, '#F4C8E8', 120, 2, 'UWAGA');
   }
   function updateBossExtras() {
     const player = game.player;
@@ -578,13 +874,16 @@
       ctx.fillRect(x - 8, ground - 26, 16, 8);
       ctx.fillRect(x - (w.dir > 0 ? 18 : -10), ground - 10, 8, 10);
     }
+    const SPORE_COL = { king: ['#5A2A4A', '#E28AC8', '#FFE0F4'], toad: ['#3A2410', '#8A6238', '#C8A070'], licho: ['#2A1A5A', '#9A8AFF', '#F0E8FF'] };
     for (const s of game.bossSpores) {
       const x = snap(s.x - game.cameraX);
-      ctx.fillStyle = '#5A2A4A';
+      const c = SPORE_COL[s.kind] || SPORE_COL.king;
+      ctx.fillStyle = c[0];
       ctx.fillRect(x - 8, snap(s.y) - 8, 16, 16);
-      ctx.fillStyle = '#E28AC8';
+      ctx.fillStyle = c[1];
       ctx.fillRect(x - 6, snap(s.y) - 6, 12, 12);
-      ctx.fillStyle = '#FFE0F4';
+      ctx.fillStyle = c[2];
       ctx.fillRect(x - 3, snap(s.y) - 4, 4, 4);
+      if (s.kind === 'licho' && game.frame % 3 === 0) game.particles.push({ x: s.x, y: s.y, vx: 0, vy: -0.4, color: '#C8B8FF', life: 12, size: 2 });
     }
   }

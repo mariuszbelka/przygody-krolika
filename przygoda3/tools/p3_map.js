@@ -80,7 +80,7 @@
       decor.put(mx, my - 1, 3);
     }
     // krąg grzybów przy królu
-    const [kx, ky] = nodes[nodes.length - 1];
+    const [kx, ky] = nodes[4];
     for (let k = 0; k < 12; k += 1) {
       const a = k / 12 * Math.PI * 2;
       const mx = Math.round(kx + Math.cos(a) * 17);

@@ -1,10 +1,18 @@
-# 🐰 Puszek i marchewki kontra Persi
+# 🐰 Przygody Puszka i Persiego
 
-Pixel-artowa platformówka w **jednym pliku HTML**: bez instalacji i bez bibliotek, działa w przeglądarce na komputerze i telefonie.
-Bohaterowie mają prawdziwe pierwowzory: królika **Puszka** (biały, z grzywką i krótkimi brzoskwiniowymi uszkami) i kota **Persiego** (bury tygrysek z literą „M” na czole).
+Gry przeglądarkowe o króliku **Puszku** (biały, z grzywką i krótkimi brzoskwiniowymi uszkami) i kocie **Persim** (bury tygrysek z literą „M” na czole). Bez instalacji, działają na komputerze i telefonie.
 
-### ▶ [Zagraj](https://mariuszbelka.github.io/przygody-krolika/)  ·  🧩 [Przygoda 2: Sroka Złodziejka](https://mariuszbelka.github.io/przygody-krolika/przygoda2/)  ·  🌲 [Przygoda 3: Zaczarowany Las](https://mariuszbelka.github.io/przygody-krolika/przygoda3/)
+### ▶ [Strona główna: wybierz grę](https://mariuszbelka.github.io/przygody-krolika/)
 
+| Gra | Typ | Link |
+|---|---|---|
+| Przygoda 1: Puszek i marchewki | platformówka, 8 krain | [`/przygoda1/`](https://mariuszbelka.github.io/przygody-krolika/przygoda1/) |
+| Przygoda 2: Sroka Złodziejka | zagadki, 15 pokoi | [`/przygoda2/`](https://mariuszbelka.github.io/przygody-krolika/przygoda2/) |
+| Przygoda 3: Zaczarowany Las | platformówka, 3 krainy, 13 poziomów | [`/przygoda3/`](https://mariuszbelka.github.io/przygody-krolika/przygoda3/) |
+
+Strona główna (`index.html`) pozwala wybrać typ gry (skakanie albo zagadki) i przygodę. Pokazuje też zdobyte gwiazdki i przekazuje kod ekipy `?ekipa=` do każdej gry.
+
+## Przygoda 1: Puszek i marchewki (`/przygoda1/`)
 ![Menu](docs/menu.png)
 
 ## O grze
@@ -48,6 +56,11 @@ Ranking działa tylko z linku z kodem ekipy:
 https://mariuszbelka.github.io/przygody-krolika/?ekipa=znajomi
 ```
 
+Strona główna przekaże kod do Przygody 1 i 3 (każda ma osobny ranking, Przygoda 3 osobno dla trybu Spokojnie i Czadowo).
+
+```
+```
+
 Każdy kod (litery, cyfry, myślnik) to osobna tabela wyników. Wynik trafia do rankingu po przejściu całej przygody od poziomu 1 albo po utracie wszystkich serc.
 Bez kodu w linku gra działa normalnie, tylko bez rankingu.
 
@@ -56,7 +69,7 @@ Klucz `sb_publishable_…` w kodzie jest publiczny z założenia. Dostęp ograni
 Ranking chroni wyłącznie nieznajomość linku, więc nie jest zabezpieczony przed wpisaniem fałszywego wyniku.
 
 ## Technicznie
-- Jeden plik `index.html`, czysty JavaScript i Canvas 2D, logiczna rozdzielczość 800×480 z ostrym renderingiem HiDPI.
+- Jeden plik `przygoda1/index.html`, czysty JavaScript i Canvas 2D, logiczna rozdzielczość 800×480 z ostrym renderingiem HiDPI.
 - Proceduralny pixel-art: sprite'y generowane w kodzie, z cieniowaniem i światłem.
 - Muzyka i efekty generowane na żywo przez WebAudio, bez plików dźwiękowych.
 - Czcionki (Fredoka, Press Start 2P) są wbudowane w plik, więc gra wygląda tak samo offline.
@@ -64,7 +77,7 @@ Ranking chroni wyłącznie nieznajomość linku, więc nie jest zabezpieczony pr
 - Wszystkie poziomy przeszedł automatyczny bot bez utraty serca. Precyzję skoków mierzono z celowo „rozjechanym” timingiem ±50 i ±100 ms.
 
 ## Uruchomienie lokalne
-Wystarczy otworzyć `index.html` w przeglądarce.
+Wystarczy otworzyć `index.html` (strona główna) albo plik wybranej gry w przeglądarce.
 
 ## Przygoda 2: Sroka Złodziejka (`/przygoda2/`)
 Turowa gra logiczna: Puszek i Persi działają razem przeciw Sroce Szarlotce. Liczy się kombinowanie, a nie refleks.
@@ -86,31 +99,31 @@ Solver wyznacza też liczbę ruchów „mistrza”: minimum +10%.
 `tools/check.js` sprawdza, czy skrzynki, nory i ziemia są w pokoju naprawdę potrzebne.
 
 ## Przygoda 3: Zaczarowany Las (`/przygoda3/`)
-Szybka platformówka na silniku z części 1. Na starcie wybierasz, czy grasz Puszkiem, czy Persim:
+Szybka platformówka na silniku z części 1. Leśne Licho zaczarowało las; pokonani wrogowie zostają **odczarowani**.
+W menu wybierasz bohatera i tryb:
 
 | | Umiejętności |
 |---|---|
 | **Puszek** | podwójny skok, bobki, tupnięcie |
 | **Persi** | szybszy, skacze wyżej, wspina się po pnączach, zryw z pazurkami przebija wrogów |
 
-Leśne Licho zaczarowało las. Pokonani wrogowie zostają **odczarowani**.
-
-| Wróg | Uwaga |
+| Tryb | Różnice |
 |---|---|
-| muchomorki | – |
-| żabki | – |
-| jeże | nie wolno skakać im na grzbiet |
-| wiewiórki | rzucają szyszkami |
-| Bzyczki | – |
-| boss Grzybowy Król | 6 serc, 3 fazy (fale uderzeniowe, salwy zarodników, przywołane muchomorki); po każdym trafieniu odskakuje i jest chwilę nietykalny; zryw i taran się od niego odbijają |
+| **Spokojnie** | wrogowie i pościgi wolniejsze, bossowie mają mniej serc i dłużej ostrzegają, upadek w przepaść nie zabiera serca |
+| **Czadowo** | pełna trudność |
 
-**Zbieranie:** dużo żołędzi z mnożnikiem serii, słoiki ze świetlikami (gwiazdka), złote żołędzie w sekretach.
-**Moce:** magnes, bańka, Turbo-marchew. Po trafieniu żołędzie się rozsypują i można je odzyskać.
-**Kraina 1, Polana Grzybów:** Leśna ścieżka, Korony drzew, Jeżynowy gąszcz, pościg Wiatrołom i finał z Grzybowym Królem.
-Poziomy mają 8,5–10,5 tys. px (ok. 2,5× dłuższe niż w pierwszej wersji), z 3–4 punktami kontrolnymi każdy.
-Mapa świata to leśna polana ze ścieżką, a w tle widać kolejne krainy: Mokradła i Mgłę oraz Drzewo Licha.
-Źródła poziomów, grafiki i mapy są w `przygoda3/tools/`, a `patch_p3.py` składa z nich grę na bazie części 1.
+| Kraina | Poziomy | Nowości |
+|---|---|---|
+| 1 · Polana Grzybów | Leśna ścieżka, Korony drzew, Jeżynowy gąszcz, pościg Wiatrołom, boss **Grzybowy Król** | muchomorki, żabki, jeże, wiewiórki z szyszkami, Bzyczki, pnącza |
+| 2 · Mokradła i Mgła | Błotna grobla, Mglisty gąszcz, pościg Błotna fala, boss **Ropuch Mgielnik** | tonące lilie, spadające kłody, błoto (wolniej, niżej), mgła, **Korzeniak** (zapowiada go drżenie ziemi; tupnięcie wyrywa go spod ziemi) |
+| 3 · Drzewo Licha | Nocny las, Korzenie Drzewa, pościg Gniew Licha, finał **Leśne Licho** | noc z oświetleniem, **sowy** pikujące po cieniu, kruszące się kamienie |
 
-Poziomy sprawdza walidator osiągalności dla obu postaci (`przygoda3/tools/validate3.js`).
-Bot przeszedł każdy poziom obiema postaciami bez utraty serca.
-Ranking działa z tym samym kodem `?ekipa=`, ale osobno dla części 3.
+Bossowie mają po 3 fazy. Po każdym trafieniu odskakują i są chwilę nietykalni. Zryw i taran się od nich odbijają.
+- **Grzybowy Król:** szarże, fale uderzeniowe, salwy zarodników, przywołuje muchomorki.
+- **Ropuch Mgielnik:** skacze z falą przy każdym lądowaniu, pluje błotem, woła żabki.
+- **Leśne Licho:** znika i pojawia się obok gracza, rzuca ognikami, budzi Korzeniaki.
+
+**Zbieranie:** żołędzie z mnożnikiem serii, słoiki ze świetlikami (gwiazdka), złote żołędzie w sekretach. Moce: magnes, bańka, Turbo-marchew.
+
+Gra jest generowana z kodu Przygody 1: `przygoda3/tools/patch_p3.py` łączy `przygoda1/index.html` z plikami `p3_levels.js` (poziomy z segmentów), `p3_add.js`, `p3_draw.js` i `p3_map.js`.
+Walidator osiągalności (`tools/validate3.js`) sprawdza dla obu postaci metę i wszystkie słoiki na każdym poziomie.

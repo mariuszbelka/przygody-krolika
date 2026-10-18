@@ -251,6 +251,10 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
 #heroRow button { flex:1; height:40px; border-radius:12px; border:2px solid rgba(255,255,255,0.25); background:rgba(20,30,40,0.8); color:#DDE8F0;
   font:700 15px "Fredoka","Trebuchet MS",sans-serif; letter-spacing:1px; cursor:pointer; }
 #heroRow button.on { background:linear-gradient(180deg,#FFD86A 0%,#E8A42A 100%); color:#2A1A06; border-color:#FFF2B0; }
+#modeRow { display:flex; gap:8px; }
+#modeRow button { flex:1; height:30px; border-radius:10px; border:2px solid rgba(255,255,255,0.2); background:rgba(20,30,40,0.7); color:#C8D8E4;
+  font:700 12px "Fredoka","Trebuchet MS",sans-serif; letter-spacing:1px; cursor:pointer; }
+#modeRow button.on { background:linear-gradient(180deg,#9AE0FF 0%,#4AA0E0 100%); color:#06223A; border-color:#D8F4FF; }
 #heroCap { min-height:30px; font:600 12px "Fredoka","Trebuchet MS",sans-serif; color:#E8F4D8; text-align:center; line-height:1.25; }
 .hidden { display:none !important; }
 </style>
@@ -264,13 +268,14 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         <label for="nameInput">TWOJE IMIĘ</label>
         <input id="nameInput" type="text" maxlength="16" placeholder="Twoje imię, np. Ania" spellcheck="false" autocomplete="off" inputmode="text">
         <div id="heroRow"><button type="button" data-hero="P">PUSZEK</button><button type="button" data-hero="C">PERSI</button></div>
+        <div id="modeRow"><button type="button" data-mode="S">SPOKOJNIE</button><button type="button" data-mode="C">CZADOWO</button></div>
         <div id="heroCap"></div>
         <div id="menuActionRow">
           <button id="startBtn" type="button">START PRZYGODY</button>
           <button id="menuFullscreenBtn" type="button">PEŁNY EKRAN</button>
         </div>
         <div id="menuHint"></div>
-        <div style="display:flex;justify-content:center;gap:14px;padding:2px 0;font:700 12px Fredoka,sans-serif;"><a href="../" style="color:#FFE680;text-decoration:none;">← Przygoda 1</a><a href="../przygoda2/" style="color:#FFE680;text-decoration:none;">Przygoda 2: zagadki</a></div>
+        <div style="display:flex;justify-content:center;gap:14px;padding:2px 0;font:700 12px Fredoka,sans-serif;"><a class="keepq" href="../" style="color:#D9F0FF;text-decoration:none;">⌂ Wszystkie gry</a><a class="keepq" href="../przygoda1/" style="color:#FFE680;text-decoration:none;">Przygoda 1</a><a class="keepq" href="../przygoda2/" style="color:#FFE680;text-decoration:none;">Przygoda 2</a></div><script>document.querySelectorAll('a.keepq').forEach(function(a){a.href=a.getAttribute('href')+location.search;});</script>
       </div>
     </div>
   </div>
@@ -649,7 +654,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     bass: [38, 0, 0, 0, 45, 0, 0, 0, 34, 0, 0, 0, 41, 0, 0, 0, 36, 0, 0, 0, 43, 0, 0, 0, 33, 0, 0, 0, 45, 0, 0, 0],
     drums: 'k.......s.......k...k...s.....h.'
   };
-  const SONG_FOR = [['a', 2], ['b', 0], ['c', -2], ['b', 7], ['boss', 0]];
+  const SONG_FOR = [['a', 2], ['b', 0], ['c', -2], ['b', 7], ['boss', 0], ['c', 3], ['a', -2], ['b', 5], ['boss', 3], ['c', -5], ['a', -4], ['b', 3], ['boss', -2]];
 
   const MUSIC_LEVEL = 0.26;
   const audio = {
@@ -1310,7 +1315,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
 
   // ---- segmenty poziomów: każdy dopisuje elementy do L i zwraca swoją szerokość ----
   const ENEMY = (L, kind, x0, x1, k = 1) => {
-    if (kind === 'bee') L.enemies.push(makeEnemySpawn(Math.round((x0 + x1) / 2), H - TILE * k, x0, x1, false, 'bee'));
+    if (kind === 'bee' || kind === 'owl') L.enemies.push(makeEnemySpawn(Math.round((x0 + x1) / 2), H - TILE * k, x0, x1, false, kind));
     else L.enemies.push(makeEnemySpawn(Math.round((x0 + x1) / 2), ONP(k), x0, x1, false, kind === 'walker' ? 'walker' : kind));
   };
   const GR = (len, o = {}) => (L, x) => {
@@ -1319,8 +1324,9 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     (o.enemies || []).forEach((kind, i, arr) => {
       const span = (len - 80) / arr.length;
       const a = x + 40 + i * span;
-      ENEMY(L, kind, Math.round(a), Math.round(a + span), kind === 'bee' ? 7 : 1);
+      ENEMY(L, kind, Math.round(a), Math.round(a + span), kind === 'bee' ? 7 : kind === 'owl' ? 10 : 1);
     });
+    if (o.mud) for (let mx = x + 130; mx < x + len - 190; mx += 320) L.mud.push({ x: mx, w: 160 });
     if (o.cp) L.checkpoints.push(GROUND_CP(x + Math.round(len / 2)));
     if (o.power) L.pickups.push(PU(x + Math.round(len * 0.7), 3, o.power));
     if (o.heart) L.pickups.push(PU(x + Math.round(len * 0.3), 3, 'heart'));
@@ -1374,7 +1380,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     (o.enemies || []).forEach((kind, i, arr) => {
       const span = (len - 80) / arr.length;
       const a = x + 40 + i * span;
-      ENEMY(L, kind, Math.round(a), Math.round(a + span), kind === 'bee' ? 8 : 1);
+      ENEMY(L, kind, Math.round(a), Math.round(a + span), kind === 'bee' ? 8 : kind === 'owl' ? 10 : 1);
     });
     if (o.power) L.pickups.push(PU(x + 60, 3, o.power));
     if (o.cp) L.checkpoints.push(GROUND_CP(x + 80));
@@ -1388,8 +1394,45 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     return 480;
   };
 
+  // ---- kraina 2 i 3: staw z liliami, spadające kłody, kruszące się kamienie ----
+  const POND = (n = 5, o = {}) => (L, x) => {
+    for (let i = 0; i < n; i += 1) {
+      const px = x + 40 + i * 104;
+      L.platforms.push(PL(px, 1, 2, 'lily'));
+      L.pickups.push(...ARC(px - 30, 1, 3, 70, 60));
+    }
+    if (o.jar) {
+      const mid = x + 40 + Math.floor(n / 2) * 104 - 12;
+      L.platforms.push(PL(mid, 6, 3));
+      L.pickups.push(PU(mid + 24, 6, 'diamond'));
+    }
+    if (o.bee) ENEMY(L, 'bee', x + 60, x + n * 104, 7);
+    return 40 + n * 104 + 16;
+  };
+  const LOGS = (n = 4, o = {}) => (L, x) => {
+    for (let i = 0; i < n; i += 1) {
+      const px = x + 40 + i * 120;
+      const k = 2 + (i % 2);
+      L.platforms.push(PL(px, k, 3, 'log'));
+      L.pickups.push(...ROW(px + 8, k, 2, 30));
+    }
+    if (o.jar) L.pickups.push(PU(x + 40 + Math.floor(n / 2) * 120 + 20, 7, 'diamond'));
+    if (o.owl) ENEMY(L, 'owl', x + 40, x + n * 120, 10);
+    return 40 + n * 120 + 30;
+  };
+  const CRUMBLE = (n = 4, o = {}) => (L, x) => {
+    for (let i = 0; i < n; i += 1) {
+      const px = x + 40 + i * 110;
+      const k = 2 + (i % 2) * 2;
+      L.platforms.push(PL(px, k, 3, 'crumble'));
+      L.pickups.push(...ROW(px + 10, k, 2, 30));
+    }
+    if (o.jar) L.pickups.push(PU(x + 40 + Math.floor(n / 2) * 110 + 20, 8, 'diamond'));
+    return 40 + n * 110 + 30;
+  };
+
   function buildLevel(meta, segs) {
-    const L = { ...meta, platforms: [], enemies: [], pickups: [], bouncers: [], vines: [], spikes: [], secrets: [], checkpoints: [] };
+    const L = { ...meta, platforms: [], enemies: [], pickups: [], bouncers: [], vines: [], spikes: [], secrets: [], checkpoints: [], mud: [] };
     let x = 0;
     segs.forEach((seg) => { x += seg(L, x); });
     L.worldWidth = x;
@@ -1427,7 +1470,9 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     ]),
     {
       worldWidth: 1500,
-      label: 'Finał: Grzybowy Król',
+      label: 'Boss: Grzybowy Król',
+      bossKind: 'king',
+      mud: [],
       hint: 'Grzybowy Król! Przeskakuj szarżę i fale, skacz mu na kapelusz. Uciekaj spod cieni zarodników.',
       sky1: '#1E2A3A', sky2: '#3E4A5A',
       startX: 50,
@@ -1445,10 +1490,80 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         ...ROW(250, 4, 5, 30), PU(360, 1, 'heart'), PU(690, 4, 'diamond'),
         PU(760, 1, 'heart'), ...ROW(1090, 4, 5, 30), PU(1180, 1, 'heart'), PU(1320, 1, 'bubble')
       ]
+    },
+    // ================= KRAINA 2: MOKRADŁA I MGŁA =================
+    buildLevel({ label: 'Poziom 6: Błotna grobla', hint: 'Lilie toną, gdy na nich stoisz – skacz dalej! Błoto spowalnia. Ziemia drży? To Korzeniak!', sky1: '#E8A878', sky2: '#F6E0B8' }, [
+      GR(420), POND(5), GR(500, { mud: true, enemies: ['root'] }), STAIRS({ jar: true }), POND(6), GR(480, { cp: true, mud: true, enemies: ['hopper', 'root'] }),
+      TOWER(), LOGS(4), GR(400, { power: 'magnet' }), VINE_SECRET(), POND(7, { jar: true }), GR(600, { mud: true, enemies: ['root', 'root'], cp: true, heart: true }),
+      BRANCHES([4, 6, 8, 6, 4], { bee: true }), LOGS(5), GR(500, { enemies: ['hopper'] }), PERCH({ jar: true }), POND(5, { bee: true }), GR(640, { mud: true, enemies: ['root', 'walker'], cp: true }),
+      GR(420, { acorns: false })
+    ]),
+    buildLevel({ label: 'Poziom 7: Mglisty gąszcz', hint: 'Mgła! Widać tylko kawałek wokół ciebie. Ogniki i słoiki świecą w mroku.', sky1: '#A8B8B8', sky2: '#E0E8E0' }, [
+      GR(420), BRAMBLE(600, { enemies: ['root'] }), POND(5), GR(500, { enemies: ['hopper', 'bee'], cp: true }), TOWER({ jar: true }), LOGS(4),
+      GR(520, { mud: true, enemies: ['root', 'root'] }), BRANCHES([4, 6, 8, 10, 8, 6], { squirrel: 2, bee: true, jar: 3 }), GR(480, { cp: true, heart: true, power: 'bubble' }),
+      POND(6), STAIRS({ enemy: 'root' }), VINE_SECRET({ power: 'magnet', jar: true }), BRAMBLE(720, { enemies: ['hedgehog', 'bee'], cp: true }), LOGS(5),
+      GR(600, { mud: true, enemies: ['root', 'hopper'] }), GR(420, { acorns: false })
+    ]),
+    buildLevel({ label: 'Poziom 8: Błotna fala', hint: 'Błotna fala! Biegnij w prawo – lilie i kłody nie poczekają.', sky1: '#B07858', sky2: '#E8C8A0', chase: { speed: 2.1, delay: 170, kind: 'mud' } }, [
+      GR(800, { power: 'magnet' }), POND(4), GR(500), LOGS(3), STAIRS(), GR(500, { cp: true, heart: true }), TOWER({ jar: true }), POND(5), GR(600, { enemies: ['root'] }), GAP(),
+      STAIRS({ jar: true }), GR(500, { cp: true }), LOGS(4), GR(500, { enemies: ['hopper'] }), POND(4), TOWER({ jar: true }), GR(500, { cp: true, heart: true }), GAP(),
+      GR(700, { power: 'bubble' }), GR(420, { acorns: false })
+    ]),
+    {
+      worldWidth: 1500,
+      label: 'Boss: Ropuch Mgielnik',
+      bossKind: 'toad',
+      hint: 'Ropuch Mgielnik! Skacze i robi fale – podskakuj nad nimi. Pluje błotem, a w złości woła żabki.',
+      sky1: '#40384A', sky2: '#8A7A78',
+      startX: 50,
+      startY: H - TILE - PLAYER_H,
+      exitX: 1420,
+      isBoss: true,
+      mud: [],
+      checkpoint: { x: 670, y: H - TILE * 4, respawnX: 638, respawnY: H - TILE * 4 - PLAYER_H },
+      platforms: [PL(0, 1, 63), PL(200, 5, 6), PL(640, 4, 8), PL(1120, 5, 6)],
+      enemies: [makeEnemySpawn(620, H - TILE - CAT_H * 2 - 4, 360, 1040, true)],
+      spikes: [],
+      pickups: [...ROW(214, 5, 4, 30), PU(380, 1, 'heart'), PU(700, 4, 'diamond'), PU(780, 1, 'heart'), ...ROW(1134, 5, 4, 30), PU(1200, 1, 'heart'), PU(1320, 1, 'bubble')]
+    },
+    // ================= KRAINA 3: DRZEWO LICHA =================
+    buildLevel({ label: 'Poziom 10: Nocny las', hint: 'Noc! Sowy pikują z góry – gdy pod tobą pojawi się cień, uskocz.', sky1: '#1A2440', sky2: '#3A3A60' }, [
+      GR(420), GR(500, { enemies: ['owl'] }), STAIRS({ jar: true }), GAP(), GR(500, { enemies: ['root', 'owl'], cp: true }), TOWER(),
+      BRANCHES([4, 6, 8, 10, 8, 6], { squirrel: 2, jar: 3 }), GR(480, { heart: true, power: 'bubble', enemies: ['owl'] }), LOGS(4, { owl: true }), VINE_SECRET({ jar: true }),
+      GR(600, { cp: true, enemies: ['root', 'hedgehog', 'owl'] }), CRUMBLE(5), PERCH(), BRAMBLE(600, { enemies: ['owl'] }), STAIRS({ enemy: 'root' }),
+      GR(640, { cp: true, enemies: ['owl', 'root'] }), GR(420, { acorns: false })
+    ]),
+    buildLevel({ label: 'Poziom 11: Korzenie Drzewa', hint: 'Korzenie Drzewa Licha. Kamienie kruszą się pod łapkami – nie stój długo!', sky1: '#20183A', sky2: '#4A3A68' }, [
+      GR(420), CRUMBLE(4), GR(480, { enemies: ['root', 'root'] }), BRANCHES([4, 6, 8, 10, 12, 10, 8], { squirrel: 3, jar: 4 }), GR(400, { cp: true, enemies: ['owl'] }),
+      CRUMBLE(5, { jar: true }), GR(500, { enemies: ['hedgehog', 'owl'], power: 'magnet' }), VINE_SECRET({ power: 'bubble' }), BRAMBLE(720, { enemies: ['root', 'owl'], cp: true }),
+      LOGS(5, { owl: true }), GR(480, { heart: true, enemies: ['root'] }), TOWER({ jar: true, enemy: 'hedgehog' }), CRUMBLE(6), GR(500, { cp: true, enemies: ['owl', 'root'] }),
+      BRANCHES([4, 6, 8, 6, 4], { squirrel: 2, bee: true }), GR(640, { enemies: ['root', 'owl', 'root'] }), GR(420, { acorns: false })
+    ]),
+    buildLevel({ label: 'Poziom 12: Gniew Licha', hint: 'Licho się gniewa – kolczaste korzenie gonią cię przez las. Biegnij!', sky1: '#160E2A', sky2: '#3A2050', chase: { speed: 2.2, delay: 170, kind: 'roots' } }, [
+      GR(800, { power: 'magnet' }), GAP(), STAIRS(), LOGS(3), GR(500, { cp: true, heart: true }), TOWER({ jar: true }), CRUMBLE(4), GR(600, { enemies: ['root'] }), GAP(),
+      STAIRS({ jar: true }), GR(500, { cp: true }), LOGS(4), GR(500, { enemies: ['owl'] }), CRUMBLE(4), TOWER({ jar: true }), GR(500, { cp: true, heart: true }), GAP(),
+      GR(700, { power: 'bubble' }), GR(420, { acorns: false })
+    ]),
+    {
+      worldWidth: 1500,
+      label: 'Finał: Leśne Licho',
+      bossKind: 'licho',
+      hint: 'Leśne Licho! Znika i pojawia się obok, rzuca ognikami i budzi Korzeniaki. Skacz mu na głowę!',
+      sky1: '#0A0818', sky2: '#2A1840',
+      startX: 50,
+      startY: H - TILE - PLAYER_H,
+      exitX: 1420,
+      isBoss: true,
+      mud: [],
+      checkpoint: { x: 670, y: H - TILE * 4, respawnX: 638, respawnY: H - TILE * 4 - PLAYER_H },
+      platforms: [PL(0, 1, 63), PL(240, 4, 6), PL(600, 6, 6), PL(1060, 4, 6)],
+      enemies: [makeEnemySpawn(620, H - TILE - CAT_H * 2 - 4, 360, 1040, true)],
+      spikes: [],
+      pickups: [...ROW(254, 4, 4, 30), PU(380, 1, 'heart'), PU(660, 6, 'diamond'), PU(780, 1, 'heart'), ...ROW(1074, 4, 4, 30), PU(1200, 1, 'heart'), PU(1320, 1, 'bubble')]
     }
   ];
 
-  const THEME_ORDER = ['glade', 'canopy', 'bramble', 'windfall', 'mushking'];
+  const THEME_ORDER = ['glade', 'canopy', 'bramble', 'windfall', 'mushking', 'marsh', 'mistbog', 'mudrun', 'toadpond', 'nightwood', 'roots', 'lichorun', 'lichotree'];
   const THEMES = {
     meadow: { sky: ['#74C3F0', '#E4F8FF'], sun: '#FFF3B0', far: '#A9D6C2', mid: '#86C08E', near: '#5FA866', grass: '#74C94F', grassHi: '#A2E46E', grassDark: '#3E8E3A', dirt: '#9A6634', dirtDark: '#6B4220', stone: '#C29563', trunk: '#7A5233', leaf: '#5E9E62', leafHi: '#86C47E', deco: 'meadow', blobs: 'flower', critters: 'butterflies' },
     hills: { sky: ['#7FC0F2', '#FFF0D6'], sun: '#FFE9A0', far: '#C2DCB4', mid: '#98C981', near: '#6DB05A', grass: '#7CCB4C', grassHi: '#A9E86E', grassDark: '#448F33', dirt: '#A0693A', dirtDark: '#6E4523', stone: '#C99A60', trunk: '#7E5636', leaf: '#6AA65A', leafHi: '#93CB78', fruit: '#FF8C2E', deco: 'meadow', critters: 'butterflies' },
@@ -1465,8 +1580,17 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     canopy: { sky: ['#7EC4EE', '#F4F6DA'], sun: '#FFF6C8', far: '#B8DCC0', mid: '#7FBF86', near: '#4E9A5A', grass: '#7ACF5A', grassHi: '#B0EC80', grassDark: '#3E8E3A', dirt: '#7A5232', dirtDark: '#52341C', stone: '#A0805A', trunk: '#6E4A2C', leaf: '#5AAA5E', leafHi: '#8AD47E', deco: 'forest', blobs: 'leaf', critters: 'birds' },
     bramble: { sky: ['#9CCFC0', '#F6EDC8'], sun: '#FFE9A0', far: '#9AB894', mid: '#6E9A62', near: '#46743E', grass: '#5DAE48', grassHi: '#92D46E', grassDark: '#2F6E2E', dirt: '#7A4E2C', dirtDark: '#4E2E16', stone: '#9A7A56', trunk: '#5A3A22', leaf: '#3E7A48', leafHi: '#B84A6A', deco: 'forest', blobs: 'petal', critters: 'butterflies' },
     windfall: { sky: ['#5E7A92', '#C0CCB8'], rain: true, blobs: 'leaf', far: '#7A9A8C', mid: '#557A62', near: '#365A44', grass: '#5AA448', grassHi: '#88CC66', grassDark: '#2E6A32', dirt: '#6E4A2C', dirtDark: '#4A2E18', stone: '#8E7458', trunk: '#4E3420', leaf: '#3A6A4A', leafHi: '#C88A3A', deco: 'forest', critters: 'fireflies' },
-    mushking: { sky: ['#14182E', '#3A2E52'], moon: true, far: '#2A3050', mid: '#222846', near: '#181C36', grass: '#4E8A5A', grassHi: '#7AB47E', grassDark: '#2E5A38', dirt: '#4E3E50', dirtDark: '#30263A', stone: '#6E6080', trunk: '#2E2438', leaf: '#2E4A48', leafHi: '#C86AA8', deco: 'forest', critters: 'fireflies' }
+    mushking: { sky: ['#14182E', '#3A2E52'], moon: true, far: '#2A3050', mid: '#222846', near: '#181C36', grass: '#4E8A5A', grassHi: '#7AB47E', grassDark: '#2E5A38', dirt: '#4E3E50', dirtDark: '#30263A', stone: '#6E6080', trunk: '#2E2438', leaf: '#2E4A48', leafHi: '#C86AA8', deco: 'forest', critters: 'fireflies' },
+    marsh: { sky: ['#D88A6A', '#F6DEB0'], sun: '#FFD08A', far: '#9AA88A', mid: '#6E8A66', near: '#4A6A4A', grass: '#6A9A48', grassHi: '#9AC46A', grassDark: '#3A6A32', dirt: '#6A4A2E', dirtDark: '#463018', stone: '#8A8070', trunk: '#4A3A28', leaf: '#4A7A52', leafHi: '#C8A05A', deco: 'stream', water: true, mist: true, critters: 'fireflies' },
+    mistbog: { sky: ['#8A9A9A', '#D6E0DA'], far: '#A8B8B0', mid: '#80988C', near: '#5A7466', grass: '#5E8E4E', grassHi: '#8AB872', grassDark: '#36603A', dirt: '#5E4A34', dirtDark: '#3E3020', stone: '#8A8A80', trunk: '#3E3428', leaf: '#4A6A58', leafHi: '#9AB89A', deco: 'forest', water: true, mist: true, critters: 'fireflies' },
+    mudrun: { sky: ['#9A6A50', '#E2C29A'], sun: '#FFC27A', rain: true, far: '#8A8A72', mid: '#66705A', near: '#46523E', grass: '#5E8E44', grassHi: '#8AB866', grassDark: '#36602E', dirt: '#6A4A2C', dirtDark: '#463016', stone: '#8A7860', trunk: '#4A3420', leaf: '#4A6A42', leafHi: '#B8884A', deco: 'forest', water: true, critters: 'birds' },
+    toadpond: { sky: ['#2E2840', '#7A6A70'], moon: true, far: '#4A4A5A', mid: '#3A3E4A', near: '#2A3036', grass: '#4E7A4A', grassHi: '#7AA070', grassDark: '#2E4E30', dirt: '#4E4036', dirtDark: '#302822', stone: '#6E6A66', trunk: '#2E2A26', leaf: '#3A4E44', leafHi: '#9AB070', deco: 'stream', water: true, mist: true, critters: 'fireflies' },
+    nightwood: { sky: ['#0E1430', '#2E3058'], moon: true, far: '#262C50', mid: '#1E2444', near: '#151A34', grass: '#3E6E4E', grassHi: '#6A9A72', grassDark: '#24442E', dirt: '#3E3446', dirtDark: '#28202E', stone: '#5E5870', trunk: '#241E30', leaf: '#243C40', leafHi: '#4E7A6A', deco: 'forest', critters: 'fireflies' },
+    roots: { sky: ['#160E2A', '#3E2A5A'], moon: true, far: '#2E2248', mid: '#241A3C', near: '#1A1230', grass: '#3E6A4E', grassHi: '#6A9A72', grassDark: '#243E2E', dirt: '#3E2E46', dirtDark: '#281E2E', stone: '#5E4E70', trunk: '#2A1A30', leaf: '#2A3A44', leafHi: '#9A6AC8', deco: 'forest', critters: 'fireflies' },
+    lichorun: { sky: ['#120A24', '#3A1A4A'], moon: true, rain: true, far: '#2A1E44', mid: '#22183A', near: '#181028', grass: '#3A624A', grassHi: '#64946C', grassDark: '#223A2A', dirt: '#3A2A40', dirtDark: '#261A2A', stone: '#5A4A6A', trunk: '#26182C', leaf: '#2A3440', leafHi: '#C89AFF', deco: 'forest', critters: 'fireflies' },
+    lichotree: { sky: ['#08061A', '#2A1640'], moon: true, far: '#22183A', mid: '#1A1230', near: '#120C24', grass: '#3A6248', grassHi: '#64946C', grassDark: '#203828', dirt: '#3A2A40', dirtDark: '#24182A', stone: '#5A4A6A', trunk: '#22142A', leaf: '#263040', leafHi: '#C89AFF', deco: 'forest', critters: 'fireflies' }
   });
+
 
   function theme() {
     return THEMES[THEME_ORDER[game.levelIndex]] || THEMES.meadow;
@@ -1481,7 +1605,9 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   function levelBadge(index) {
     const level = LEVELS[index];
     if (!level) return '';
-    return level.isBoss ? 'FINAŁ' : `POZIOM ${index + 1}`;
+    const w = worldOf(index);
+    if (w < 0) return `POZIOM ${index + 1}`;
+    return `KRAINA ${w + 1} · ` + (level.isBoss ? 'BOSS' : `POZIOM ${index - WORLDS[w].start + 1}`);
   }
 
   function loadProgress() {
@@ -2222,7 +2348,13 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   const bgCache = new Map();
   const LIGHTING = {
     castle: { color: '22,14,48', alpha: 0.2, player: 170 },
-    boss: { color: '6,8,24', alpha: 0.56, player: 150 }
+    boss: { color: '6,8,24', alpha: 0.56, player: 150 },
+    mistbog: { color: '214,224,220', alpha: 0.6, player: 200 },
+    toadpond: { color: '20,18,36', alpha: 0.3, player: 190 },
+    nightwood: { color: '6,8,24', alpha: 0.52, player: 180 },
+    roots: { color: '12,6,26', alpha: 0.48, player: 180 },
+    lichorun: { color: '12,6,26', alpha: 0.4, player: 190 },
+    lichotree: { color: '10,4,24', alpha: 0.45, player: 190 }
   };
 
   function imageCanvas(w, h, painter) {
@@ -3492,7 +3624,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       audio.cue('whistle');
       if (!game.guide.yarnShown) {
         game.guide.yarnShown = true;
-        setNotice('Grzybowy Król sypie zarodnikami! Uciekaj spod cieni.', '#FFC8E0', 180, 3, 'UWAGA');
+        setNotice(BOSS().drops, '#FFC8E0', 180, 3, 'UWAGA');
       }
     }
     game.drops = game.drops.filter((d) => {
@@ -3527,14 +3659,39 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   // =====================================================================
   let HERO = safeLoadText('PuszekP3Hero', 'P') === 'C' ? 'C' : 'P';
   const HERO_NAME = () => (HERO === 'C' ? 'Persi' : 'Puszek');
-  function heroSpeed() { return HERO === 'C' ? 1.12 : 1; }
+  let MODE = safeLoadText('PuszekP3Mode', 'C') === 'S' ? 'S' : 'C';
+  const CALM = () => MODE === 'S';
+  const MODE_TAG = () => (MODE === 'S' ? 'P3S ' : 'P3 ');
+  function heroSpeed() { return (HERO === 'C' ? 1.12 : 1) * (game.player && game.player.inMud ? 0.55 : 1); }
+  const WORLDS = [
+    { name: 'Polana Grzybów', start: 0, end: 4 },
+    { name: 'Mokradła i Mgła', start: 5, end: 8 },
+    { name: 'Drzewo Licha', start: 9, end: 12 }
+  ];
+  function worldOf(index) { return WORLDS.findIndex((w) => index >= w.start && index <= w.end); }
+  const BOSS_INFO = {
+    king: { art: 'boss', name: 'Grzybowy Król', head: 'kapelusz', done: 'KRÓL ODCZAROWANY!', freed: 'Grzybowy Król odczarowany! Droga na mokradła wolna.',
+      drops: 'Grzybowy Król sypie zarodnikami! Uciekaj spod cieni.', summon: 'Król przywołał muchomorki!', hp: [4, 6],
+      p2: 'Król się złości! Fale przy lądowaniu – podskocz nad nimi!', p3: 'Ostatnia faza! Król przywołuje muchomorki.' },
+    toad: { art: 'toad', name: 'Ropuch Mgielnik', head: 'grzbiet', done: 'ROPUCH ODCZAROWANY!', freed: 'Ropuch odczarowany! Mgła się rozwiewa.',
+      drops: 'Z gałęzi kapie błoto! Uciekaj spod cieni.', summon: 'Ropuch woła żabki!', hp: [5, 7],
+      p2: 'Ropuch się złości! Skacze dalej i pluje częściej.', p3: 'Ostatnia faza! Ropuch woła żabki na pomoc.' },
+    licho: { art: 'licho', name: 'Leśne Licho', head: 'głowę', done: 'LICHO ODCZAROWANE!', freed: 'Leśne Licho znów jest dobrym duchem lasu!',
+      drops: 'Licho strąca ogniki z koron! Uciekaj spod cieni.', summon: 'Licho budzi Korzeniaki!', hp: [6, 8],
+      p2: 'Licho się gniewa! Znika i pojawia się tuż obok.', p3: 'Ostatnia faza! Spod ziemi wychodzą Korzeniaki.' }
+  };
+  function BOSS(index) { const L = LEVELS[index == null ? game.levelIndex : index]; return BOSS_INFO[(L && L.bossKind) || 'king']; }
+  function bossMaxHp(index) { return BOSS(index).hp[CALM() ? 0 : 1]; }
+  function bossPhase(enemy) { return enemy.hp > enemy.maxHp * 2 / 3 ? 1 : enemy.hp > enemy.maxHp / 3 ? 2 : 3; }
   function syncHeroUi() {
     document.querySelectorAll('#heroRow button').forEach((b) => b.classList.toggle('on', b.dataset.hero === HERO));
+    document.querySelectorAll('#modeRow button').forEach((b) => b.classList.toggle('on', b.dataset.mode === MODE));
     const cap = document.getElementById('heroCap');
     if (cap) {
-      cap.textContent = HERO === 'C'
+      cap.textContent = (HERO === 'C'
         ? 'Persi: szybszy, wyżej skacze, wspina się po pnączach (trzymaj skok), X – zryw z pazurkami.'
-        : 'Puszek: podwójny skok, X – rzut bobkiem, w locie ↓ – tupnięcie.';
+        : 'Puszek: podwójny skok, X – rzut bobkiem, w locie ↓ – tupnięcie.')
+        + (MODE === 'S' ? ' Spokojnie: wolniejsi wrogowie, słabsi bossowie, upadek nie zabiera serca.' : ' Czadowo: pełna trudność.');
     }
     const sb = document.getElementById('mobileShootBtn');
     if (sb) sb.innerHTML = HERO === 'C' ? 'ZRYW' : 'BOBEK';
@@ -3547,6 +3704,16 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   }
   document.querySelectorAll('#heroRow button').forEach((b) => {
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); setHero(b.dataset.hero); });
+  });
+  function setMode(m) {
+    MODE = m === 'S' ? 'S' : 'C';
+    safeSave('PuszekP3Mode', MODE);
+    syncHeroUi();
+    audio.tone(MODE === 'S' ? 520 : 780, 0.1, 'triangle', 0.07, MODE === 'S' ? 440 : 1040, 0);
+    if (typeof fetchLeaderboard === 'function') try { fetchLeaderboard(); } catch (e) { /* ranking offline */ }
+  }
+  document.querySelectorAll('#modeRow button').forEach((b) => {
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); setMode(b.dataset.mode); });
   });
   syncHeroUi();
 
@@ -3610,7 +3777,11 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       hedgehog: [['#7A5A3E', '#24160C'], ['#E8C8A0', '#4A2E18'], ['#FFFFFF', null], ['#1A1420', null], ['#4A321E', '#1A0E06']],
       squirrel: [['#D9762E', '#4A1E06'], ['#F4D8B0', '#4A2E18'], ['#FFFFFF', null], ['#1A1420', null], ['#B85A1E', '#3A1606']],
       bee: [['#FFD23A', '#3A2A06'], ['#2A2230', '#120E16'], ['#FFFFFF', null], ['#1A1420', null], ['#DDEEFF', '#7A8AA8']],
-      boss: [['#B8402E', '#3A0E08'], ['#F0E2C4', '#4A3A2A'], ['#FFFFFF', null], ['#1A1420', null], ['#FFC62E', '#5A3A06']]
+      boss: [['#B8402E', '#3A0E08'], ['#F0E2C4', '#4A3A2A'], ['#FFFFFF', null], ['#1A1420', null], ['#FFC62E', '#5A3A06']],
+      root: [['#7A5432', '#2A160A'], ['#4E8A3E', '#163A14'], ['#FFE65A', null], ['#1A1420', null], ['#5A3A20', '#1E1006']],
+      owl: [['#8A6A4E', '#2A1A0E'], ['#E8D2A8', '#4A3420'], ['#FFD84A', null], ['#1A1420', null], ['#5E4632', '#1E120A']],
+      toad: [['#6E8A3A', '#1E2A0A'], ['#D8D08A', '#3A3A16'], ['#FFE070', null], ['#1A1420', null], ['#8A5A2E', '#2A1606']],
+      licho: [['#3E5A3A', '#0E1A0E'], ['#6A4A2E', '#1E1208'], ['#C89AFF', null], ['#100818', null], ['#9AE07A', '#1E3A14']]
     };
     return (pals[kind] || pals.walker).map(([c, o], i) => (i === 2 || i === 3) ? makeMat(c, null, { flat: true }) : makeMat(c, o));
   }
@@ -3693,6 +3864,62 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       g.ellipse(X(11 + step), Y(20.5), 2, 1, 4);
       g.ellipse(X(16 - step), Y(20.5), 2, 1, 4);
       if (warn) g.ellipse(X(20), Y(12), 2, 2, 4);
+    } else if (kind === 'root') {
+      const up = warn ? -1 : 0;
+      g.ellipse(X(12), Y(13 + up), 6.4, 8, 0);
+      g.pattern(0, (x, y) => (x * 3 + y) % 7 === 0, -1);
+      g.capsule(X(6), Y(11 + up), X(1), Y(6 + up - step), 1.6, 1, 0);
+      g.capsule(X(18), Y(11 + up), X(23), Y(6 + up + step), 1.6, 1, 0);
+      g.ellipse(X(12), Y(4.5 + up), 5.4, 2.6, 1);
+      g.put(X(9), Y(2 + up), 1); g.put(X(15), Y(2.4 + up), 1);
+      eye(9.8, 11 + up, 1.1);
+      eye(14.2, 11 + up, 1.1);
+      g.rect(X(10), Y(15 + up), 4, 1, 3);
+      g.capsule(X(9), Y(19), X(6 + step), Y(21), 1.2, 1, 4);
+      g.capsule(X(15), Y(19), X(18 - step), Y(21), 1.2, 1, 4);
+    } else if (kind === 'owl') {
+      const flap = frame ? 3 : 0;
+      g.ellipse(X(12), Y(12), 7.4, 8.6, 0);
+      g.ellipse(X(12), Y(15), 4.6, 5.4, 1);
+      g.pattern(1, (x, y) => (x + y * 2) % 5 === 0, 4);
+      g.ellipse(X(9), Y(8.6), 3, 3, 1);
+      g.ellipse(X(15), Y(8.6), 3, 3, 1);
+      eye(9, 8.6, 1.7);
+      eye(15, 8.6, 1.7);
+      g.tri(X(11), Y(10.6), X(13), Y(10.6), X(12), Y(12.6), 2, 2);
+      g.tri(X(6), Y(4), X(8), Y(5), X(6.4), Y(1.6), 0, 1);
+      g.tri(X(16), Y(5), X(18), Y(4), X(17.6), Y(1.6), 0, 1);
+      g.capsule(X(5), Y(11), X(-1), Y(14 - flap * (air ? 0 : 1) + (air ? 4 : 0)), 2, 1.2, 4);
+      g.capsule(X(19), Y(11), X(25), Y(14 - flap * (air ? 0 : 1) + (air ? 4 : 0)), 2, 1.2, 4);
+      g.rect(X(10), Y(20), 1.4, 1.4, 2); g.rect(X(13), Y(20), 1.4, 1.4, 2);
+    } else if (kind === 'toad') {
+      const sq = warn ? 1.4 : air ? -1 : 0;
+      g.ellipse(X(12), Y(14 + sq * 0.6), 11.4, 7.2 - sq * 0.5, 0);
+      g.ellipse(X(12), Y(17 + sq * 0.4), 8, 3.6, 1);
+      g.ellipse(X(6.5), Y(8 + sq), 3.4, 3.2, 0);
+      g.ellipse(X(17.5), Y(8 + sq), 3.4, 3.2, 0);
+      eye(6.5, 7.6 + sq, 1.8);
+      eye(17.5, 7.6 + sq, 1.8);
+      [[4, 13], [9, 11], [15, 11], [20, 13], [12, 9.5]].forEach(([x, y]) => g.ellipse(X(x), Y(y + sq * 0.6), 1.2, 1, 4));
+      g.rect(X(7), Y(14 + sq * 0.6), 10, 0.8, 3, 2);
+      if (air) { g.capsule(X(3), Y(18), X(-1), Y(21), 1.6, 1.2, 0); g.capsule(X(21), Y(18), X(25), Y(21), 1.6, 1.2, 0); }
+      else { g.ellipse(X(3), Y(20.4), 3.6, 1.4, 0); g.ellipse(X(21), Y(20.4), 3.6, 1.4, 0); }
+      g.rect(X(8), Y(1 + sq), 8, 1.6, 2); g.put(X(8), Y(0 + sq), 2); g.put(X(12), Y(-1 + sq), 2); g.put(X(15.6), Y(0 + sq), 2);
+    } else if (kind === 'licho') {
+      const sway = warn ? 1 : step * 0.5;
+      g.ellipse(X(12), Y(13), 8.4, 9.4, 0);
+      g.pattern(0, (x, y) => (x * 5 + y * 3) % 11 === 0, 4);
+      g.ellipse(X(12), Y(20.5), 9.4, 1.6, 0);
+      g.capsule(X(7), Y(5), X(2 - sway), Y(-3), 1.2, 0.8, 1);
+      g.capsule(X(4), Y(1), X(0), Y(1), 0.9, 0.7, 1);
+      g.capsule(X(17), Y(5), X(22 + sway), Y(-3), 1.2, 0.8, 1);
+      g.capsule(X(20), Y(1), X(24), Y(1), 0.9, 0.7, 1);
+      g.ellipse(X(12), Y(11), 5.4, 4.4, 3);
+      eye(9.8, 11, 1.4);
+      eye(14.2, 11, 1.4);
+      g.rect(X(10), Y(14.6), 4, 0.8, 2, 2);
+      g.capsule(X(4), Y(12), X(-1), Y(17 + sway), 1.6, 1, 0);
+      g.capsule(X(20), Y(12), X(25), Y(17 - sway), 1.6, 1, 0);
     } else if (kind === 'bee') {
       const wing = frame ? -2 : 0;
       g.ellipse(X(8), Y(5 + wing), 4.4, 3, 4, 0, true);
@@ -3721,16 +3948,136 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     game.cpIndex = 0;
     game.bossWaves = [];
     game.bossSpores = [];
+    game.mud = (source.mud || []).map((m) => ({ ...m }));
+    game.rootHintShown = false;
+    game.owlHintShown = false;
+    game.mudHintShown = false;
   }
 
   function enemyBaseSpeed(spawn, levelIndex) {
-    if (spawn.boss) return 1.16;
+    const k = CALM() ? 0.8 : 1;
+    if (spawn.boss) return 1.16 * (CALM() ? 0.88 : 1);
     switch (spawn.kind) {
-      case 'hopper': return 0.72;
-      case 'hedgehog': return 0.7;
+      case 'hopper': return 0.72 * k;
+      case 'hedgehog': return 0.7 * k;
       case 'squirrel': return 0.32;
-      case 'bee': return 1.15;
-      default: return 0.88 + levelIndex * 0.03;
+      case 'bee': return 1.15 * k;
+      case 'owl': return 1.05 * k;
+      case 'root': return 0.82 * k;
+      default: return (0.88 + Math.min(4, levelIndex) * 0.03) * k;
+    }
+  }
+
+  // ---------- Korzeniak: śpi pod ziemią, drży i wyskakuje ----------
+  function updateRoot(enemy) {
+    if (enemy.rootState === undefined) { enemy.rootState = 'hidden'; enemy.hidden = true; enemy.rootT = 0; }
+    const p = game.player;
+    const dx = Math.abs(p.x + PLAYER_W / 2 - (enemy.x + enemy.w / 2));
+    if (enemy.rootState === 'hidden') {
+      enemy.hidden = true;
+      if (dx < 170 && Math.abs(p.y - enemy.y) < 170) {
+        enemy.rootState = 'rumble';
+        enemy.rootT = CALM() ? 62 : 44;
+        audio.noise(0.5, 0.08, 'lowpass', 300, 90, 0, 0.6);
+        if (!game.rootHintShown) {
+          game.rootHintShown = true;
+          setNotice('Ziemia drży – zaraz wyskoczy Korzeniak! Odsuń się albo tupnij w kopczyk.', '#E8D8B0', 200, 3, 'KORZENIAK');
+        }
+      }
+      return true;
+    }
+    if (enemy.rootState === 'rumble') {
+      enemy.rootT -= 1;
+      if (game.frame % 4 === 0) emitDust(enemy.x + enemy.w / 2 + (Math.random() - 0.5) * 34, enemy.y + enemy.h - 4, 2);
+      if (enemy.rootT <= 0) rootPop(enemy);
+      return true;
+    }
+    enemy.rootT += 1;
+    if (enemy.rootT > 480 && dx > 340 && enemy.standingPlatform >= 0 && !enemy.pooped) {
+      enemy.rootState = 'hidden';
+      enemy.hidden = true;
+      emitDust(enemy.x + enemy.w / 2, enemy.y + enemy.h - 4, 8);
+      return true;
+    }
+    return false;
+  }
+  function rootPop(enemy) {
+    enemy.rootState = 'up';
+    enemy.hidden = false;
+    enemy.rootT = 0;
+    enemy.vy = -6.5;
+    enemy.airborne = true;
+    enemy.facingLeft = game.player.x < enemy.x;
+    triggerShake(3, 8);
+    emitDust(enemy.x + enemy.w / 2, enemy.y + enemy.h - 4, 12);
+    audio.cue('stomp');
+  }
+
+  // ---------- Sowa: krąży wysoko, cień ostrzega przed pikowaniem ----------
+  function updateOwl(enemy) {
+    if (enemy.baseY === undefined) { enemy.baseY = enemy.y; enemy.t = Math.random() * 100; enemy.owlState = 'patrol'; enemy.owlCool = 90; }
+    enemy.t += 1;
+    enemy.walkTick += 1;
+    if (enemy.walkTick >= (enemy.owlState === 'dive' ? 99 : 6)) { enemy.walkTick = 0; enemy.walkFrame ^= 1; }
+    if (enemy.hitPause > 0) { enemy.hitPause -= 1; return; }
+    if (enemy.pooped) {
+      enemy.poopTimer -= 1;
+      enemy.y = Math.min(enemy.baseY + 60, enemy.y + 0.8);
+      enemy.owlState = 'patrol';
+      if (enemy.poopTimer <= 0) enemy.pooped = false;
+      return;
+    }
+    const p = game.player;
+    const pc = p.x + PLAYER_W / 2;
+    const oc = enemy.x + enemy.w / 2;
+    switch (enemy.owlState) {
+      case 'patrol': {
+        enemy.x += enemy.facingLeft ? -enemy.vx : enemy.vx;
+        if (enemy.x <= enemy.minX) { enemy.x = enemy.minX; enemy.facingLeft = false; }
+        if (enemy.x + enemy.w >= enemy.maxX) { enemy.x = enemy.maxX - enemy.w; enemy.facingLeft = true; }
+        const target = enemy.baseY + Math.sin(enemy.t * 0.05) * 14;
+        enemy.y += (target - enemy.y) * 0.15;
+        enemy.owlCool -= 1;
+        if (enemy.owlCool <= 0 && Math.abs(pc - oc) < 230 && p.y > enemy.y + 60 && p.onGround) {
+          enemy.owlState = 'aim';
+          enemy.owlT = CALM() ? 54 : 38;
+          enemy.tx = pc;
+          enemy.ty = p.y + PLAYER_H;
+          enemy.facingLeft = pc < oc;
+          audio.tone(700, 0.12, 'sine', 0.06, 420, 0);
+          if (!game.owlHintShown) {
+            game.owlHintShown = true;
+            setNotice('Sowa celuje! Gdy na ziemi pojawi się cień, uskocz w bok.', '#D8D0FF', 200, 3, 'SOWA');
+          }
+        }
+        break;
+      }
+      case 'aim':
+        enemy.owlT -= 1;
+        enemy.tx += (pc - enemy.tx) * (enemy.owlT > 14 ? 0.08 : 0);
+        if (enemy.owlT <= 0) {
+          enemy.owlState = 'dive';
+          const dx = enemy.tx - oc;
+          const dy = (enemy.ty - enemy.h) - enemy.y;
+          const d = Math.max(1, Math.hypot(dx, dy));
+          const sp = CALM() ? 6 : 7.4;
+          enemy.dvx = dx / d * sp;
+          enemy.dvy = dy / d * sp;
+          audio.noise(0.25, 0.08, 'bandpass', 900, 2400, 0, 1);
+        }
+        break;
+      case 'dive':
+        enemy.x += enemy.dvx;
+        enemy.y += enemy.dvy;
+        if (enemy.y + enemy.h >= enemy.ty - 2) {
+          enemy.owlState = 'rise';
+          emitDust(enemy.x + enemy.w / 2, enemy.ty - 4, 6);
+        }
+        break;
+      default:
+        enemy.y += (enemy.baseY - enemy.y) * 0.05 - 0.6;
+        if (enemy.y <= enemy.baseY + 4) { enemy.owlState = 'patrol'; enemy.owlCool = CALM() ? 200 : 140; }
+        break;
     }
   }
 
@@ -3783,6 +4130,16 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       game.particles.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, color: ['#FFF6A8', '#9AF0FF', '#FFB8F0', '#FFFFFF'][k % 4], life: 34 + Math.random() * 20, size: 3 });
     }
     if (!enemy.boss) popup(cx - game.cameraX, enemy.y - 26, 'ODCZAROWANY!', '#B8F4FF');
+    if (enemy.boss) {
+      // pokonany boss odczarowuje swoich pomocników
+      for (const e of game.enemies) {
+        if (e === enemy || e.hp <= 0) continue;
+        e.hp = 0;
+        for (let k = 0; k < 10; k += 1) game.particles.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, vx: (Math.random() - 0.5) * 4, vy: -Math.random() * 3, color: '#FFF6A8', life: 30, size: 3 });
+      }
+      game.bossSpores = [];
+      game.bossWaves = [];
+    }
     audio.tone(880, 0.1, 'sine', 0.06, 1320, 0.05);
     audio.tone(1320, 0.14, 'sine', 0.05, 1760, 0.12);
   }
@@ -3821,6 +4178,19 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       return;
     }
     player.climbing = false;
+    player.inMud = false;
+    if (player.onGround && game.mud && game.mud.length) {
+      const cx = player.x + PLAYER_W / 2;
+      const feet = player.y + PLAYER_H;
+      if (feet >= H - TILE - 4 && feet <= H - TILE + 6 && game.mud.some((m) => cx > m.x && cx < m.x + m.w)) {
+        player.inMud = true;
+        if (Math.abs(player.vx) > 0.3 && game.frame % 6 === 0) game.particles.push({ x: cx + (Math.random() - 0.5) * 20, y: feet - 4, vx: (Math.random() - 0.5) * 2, vy: -1.6, color: '#6A4A2A', life: 18, size: 3 });
+        if (!game.mudHintShown) {
+          game.mudHintShown = true;
+          setNotice('Błoto! Tu biegniesz wolniej i skaczesz niżej.', '#E8D0A8', 150, 2, 'CHLAP');
+        }
+      }
+    }
     if (HERO !== 'C' || !game.vines || !game.vines.length) return;
     const cx = player.x + PLAYER_W / 2;
     const feet = player.y + PLAYER_H;
@@ -3905,7 +4275,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     // pościg
     if (game.level.chase && !game.celebrate) {
       const ch = game.level.chase;
-      if (game.levelFrames > (ch.delay || 150) && player.x < game.level.exitX - 160) game.chaseX += ch.speed;
+      if (game.levelFrames > (ch.delay || 150) + (CALM() ? 60 : 0) && player.x < game.level.exitX - 160) game.chaseX += ch.speed * (CALM() ? 0.8 : 1);
       if (game.levelFrames % 50 === 0 && game.chaseX > game.cameraX - 200) triggerShake(2, 6);
       if (player.x < game.chaseX + 30) {
         if (player.invul <= 0) damagePlayer('wiatrolom');
@@ -3917,7 +4287,55 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     }
   }
 
+  function drawChaseWall(kind) {
+    const sx = game.chaseX - game.cameraX;
+    if (sx < -260) return;
+    const mud = kind === 'mud';
+    ctx.save();
+    const grad = ctx.createLinearGradient(sx - 300, 0, sx + 40, 0);
+    grad.addColorStop(0, mud ? 'rgba(70,46,26,0.92)' : 'rgba(40,14,60,0.92)');
+    grad.addColorStop(1, mud ? 'rgba(70,46,26,0)' : 'rgba(40,14,60,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(sx - 300, 0, 340, BASE_H);
+    for (let y = 0; y < BASE_H; y += 12) {
+      const wob = Math.sin(y * 0.06 + game.frame * 0.12) * 14 + Math.sin(y * 0.15 - game.frame * 0.2) * 6;
+      ctx.fillStyle = mud ? (y % 24 ? '#5A3A1E' : '#7A5430') : (y % 24 ? '#3A1A4A' : '#5A2A6A');
+      ctx.fillRect(snap(sx - 60 + wob), y, 60, 12);
+      if (!mud && (y / 12) % 3 === 0) {
+        ctx.fillStyle = '#C89AFF';
+        ctx.fillRect(snap(sx + wob), y + 4, 14, 3);
+        ctx.fillRect(snap(sx + 10 + wob), y + 1, 3, 9);
+      }
+      if (mud && (y / 12) % 4 === 1) {
+        ctx.fillStyle = '#9A7448';
+        ctx.fillRect(snap(sx - 4 + wob), y + 2, 10, 6);
+      }
+    }
+    for (let k = 0; k < 14; k += 1) {
+      const t = game.frame * 0.06 + k * 1.9;
+      const lx = sx + Math.sin(t) * 30 - (k % 4) * 18;
+      const ly = (k * 61 + game.frame * (1.5 + (k % 3))) % (BASE_H - 30);
+      ctx.fillStyle = mud ? '#6A4A2A' : (k % 2 ? '#9AE07A' : '#C89AFF');
+      ctx.fillRect(snap(lx), snap(ly), mud ? 7 : 4, mud ? 7 : 4);
+    }
+    ctx.restore();
+  }
+
   function drawP3Back() {
+    const ground = H - TILE;
+    for (const m of game.mud || []) {
+      const x = snap(m.x - game.cameraX);
+      if (x > BASE_W + 20 || x + m.w < -20) continue;
+      ctx.fillStyle = '#4A3018';
+      ctx.fillRect(x, ground - 4, m.w, 12);
+      ctx.fillStyle = '#6A4626';
+      ctx.fillRect(x + 6, ground - 6, m.w - 12, 6);
+      ctx.fillStyle = '#8A6238';
+      for (let k = 0; k < m.w / 24; k += 1) {
+        const ph = (game.frame * 0.04 + k * 1.7) % 3;
+        if (ph < 1) ctx.fillRect(x + 10 + k * 22, ground - 8 - Math.round(ph * 3), 4, 4);
+      }
+    }
     for (const v of game.vines || []) {
       const x = snap(v.x - game.cameraX);
       if (x < -30 || x > BASE_W + 30) continue;
@@ -3987,6 +4405,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         ctx.fillRect(snap(cx + Math.cos(a) * r), snap(cy + Math.sin(a) * r * 0.6), 3, 3);
       }
     }
+    if (game.level.chase && game.level.chase.kind) { drawChaseWall(game.level.chase.kind); return; }
     // pościg: wiatrołom – toczący się pień i burza liści
     if (game.level.chase) {
       const sx = game.chaseX - game.cameraX;
@@ -4053,19 +4472,28 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     const n = 3;
     for (let k = 0; k < n; k += 1) {
       const tx = p.x + PLAYER_W / 2 + (k - 1) * 90;
-      game.bossSpores.push({ x: cx, y: enemy.y + 10, vx: clamp((tx - cx) / 56, -6, 6), vy: -8.5 - k * 0.4, life: 300 });
+      game.bossSpores.push({ x: cx, y: enemy.y + 10, vx: clamp((tx - cx) / 56, -6, 6), vy: -8.5 - k * 0.4, life: 300, kind: game.level.bossKind || 'king' });
     }
     audio.tone(300, 0.18, 'sawtooth', 0.06, 160, 0);
   }
   function bossSummon(enemy) {
     const minions = game.enemies.filter((e) => !e.boss && e.hp > 0).length;
     if (minions >= 2) return;
-    const side = Math.random() < 0.5 ? enemy.minX + 10 : enemy.maxX - 60;
-    const e = createEnemy(makeEnemySpawn(side, H - TILE - CAT_H - 200, enemy.minX, enemy.maxX, false, 'walker'), game.levelIndex);
-    e.vy = 2;
+    const bk = game.level.bossKind || 'king';
+    let e;
+    if (bk === 'licho') {
+      const px = game.player.x + PLAYER_W / 2;
+      const side = clamp(px + (Math.random() < 0.5 ? -150 : 150), enemy.minX + 10, enemy.maxX - 60);
+      e = createEnemy(makeEnemySpawn(side, ONP(1), enemy.minX, enemy.maxX, false, 'root'), game.levelIndex);
+      emitSpark(side + 24, H - TILE - 10, '#9AE07A', 12);
+    } else {
+      const side = Math.random() < 0.5 ? enemy.minX + 10 : enemy.maxX - 60;
+      e = createEnemy(makeEnemySpawn(side, H - TILE - CAT_H - 200, enemy.minX, enemy.maxX, false, bk === 'toad' ? 'hopper' : 'walker'), game.levelIndex);
+      e.vy = 2;
+      emitSpark(side + 24, H - TILE - 60, bk === 'toad' ? '#9AE07A' : '#C86AA8', 16);
+    }
     game.enemies.push(e);
-    emitSpark(side + 24, H - TILE - 60, '#C86AA8', 16);
-    setNotice('Król przywołał muchomorki!', '#F4C8E8', 120, 2, 'UWAGA');
+    setNotice(BOSS().summon, '#F4C8E8', 120, 2, 'UWAGA');
   }
   function updateBossExtras() {
     const player = game.player;
@@ -4102,14 +4530,17 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       ctx.fillRect(x - 8, ground - 26, 16, 8);
       ctx.fillRect(x - (w.dir > 0 ? 18 : -10), ground - 10, 8, 10);
     }
+    const SPORE_COL = { king: ['#5A2A4A', '#E28AC8', '#FFE0F4'], toad: ['#3A2410', '#8A6238', '#C8A070'], licho: ['#2A1A5A', '#9A8AFF', '#F0E8FF'] };
     for (const s of game.bossSpores) {
       const x = snap(s.x - game.cameraX);
-      ctx.fillStyle = '#5A2A4A';
+      const c = SPORE_COL[s.kind] || SPORE_COL.king;
+      ctx.fillStyle = c[0];
       ctx.fillRect(x - 8, snap(s.y) - 8, 16, 16);
-      ctx.fillStyle = '#E28AC8';
+      ctx.fillStyle = c[1];
       ctx.fillRect(x - 6, snap(s.y) - 6, 12, 12);
-      ctx.fillStyle = '#FFE0F4';
+      ctx.fillStyle = c[2];
       ctx.fillRect(x - 3, snap(s.y) - 4, 4, 4);
+      if (s.kind === 'licho' && game.frame % 3 === 0) game.particles.push({ x: s.x, y: s.y, vx: 0, vy: -0.4, color: '#C8B8FF', life: 12, size: 2 });
     }
   }
 
@@ -4343,13 +4774,14 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     for (const enemy of game.enemies) {
       if (enemy.hp <= 0) continue;
       const ex = enemy.x + enemy.w / 2;
-      if (Math.abs(ex - cx) > 140 || Math.abs((enemy.y + enemy.h) - by) > 40 || enemy.standingPlatform < 0) continue;
+      if (enemy.hidden && Math.abs(ex - cx) < 140 && Math.abs((enemy.y + enemy.h) - by) < 40) rootPop(enemy);
+      else if (Math.abs(ex - cx) > 140 || Math.abs((enemy.y + enemy.h) - by) > 40 || enemy.standingPlatform < 0) continue;
       if (enemy.boss) {
         enemy.vy = -4;
         enemy.airborne = true;
         if (!game.guide.bossThumpShown) {
           game.guide.bossThumpShown = true;
-          setNotice('Grzybowy Król jest za ciężki na tupnięcie. Wskocz mu na kapelusz!', '#FFB5B5', 180, 3, 'HMM');
+          setNotice(`${BOSS().name} jest za ciężki na tupnięcie. Skacz na ${BOSS().head}!`, '#FFB5B5', 180, 3, 'HMM');
         }
         continue;
       }
@@ -4461,8 +4893,8 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   }
 
   // ---------------- world map ----------------
-  const MAP_NODES = [[90, 404], [200, 330], [330, 394], [452, 314], [566, 252]];
-  const MAP_COLORS = ['#7BD45A', '#F2A65A', '#3E9A5A', '#8FC8FF', '#4AA0E0', '#F28AB8', '#A39AB2', '#9A6CF0'];
+  const MAP_NODES = [[70, 404], [150, 334], [250, 394], [340, 320], [430, 382], [520, 436], [600, 382], [690, 440], [744, 362], [664, 292], [584, 236], [652, 180], [730, 222]];
+  const MAP_COLORS = ['#7BD45A', '#8FCB5A', '#C8784A', '#E8A43A', '#E9473F', '#C89A5A', '#8AA8A0', '#9A6A3E', '#6E8A3A', '#4A5A9A', '#7A5AB8', '#9A4AC8', '#C89AFF'];
   let mapArt = null;
 
   function mapPathPoints() {
@@ -4563,7 +4995,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       decor.put(mx, my - 1, 3);
     }
     // krąg grzybów przy królu
-    const [kx, ky] = nodes[nodes.length - 1];
+    const [kx, ky] = nodes[4];
     for (let k = 0; k < 12; k += 1) {
       const a = k / 12 * Math.PI * 2;
       const mx = Math.round(kx + Math.cos(a) * 17);
@@ -4683,16 +5115,14 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     ctx.drawImage(mapArt, 0, 0, BASE_W, BASE_H);
     ctx.save();
     ctx.textAlign = 'center';
-    drawOutlinedText('DRZEWO LICHA', 704, 262, 'bold 15px "Fredoka", sans-serif', '#E8C8FF', '#1A1030', 4);
-    drawOutlinedText('wkrótce', 704, 280, 'bold 12px "Fredoka", sans-serif', '#C8B0E8', '#1A1030', 3);
-    drawOutlinedText('MOKRADŁA I MGŁA', 700, 342, 'bold 15px "Fredoka", sans-serif', '#D8F0EC', '#10302E', 4);
-    drawOutlinedText('wkrótce', 700, 360, 'bold 12px "Fredoka", sans-serif', '#B8D8D4', '#10302E', 3);
-    drawOutlinedText('POLANA GRZYBÓW', 130, 300, 'bold 15px "Fredoka", sans-serif', '#FFF2B0', '#2A3A10', 4);
+    drawOutlinedText('3 · DRZEWO LICHA', 690, 28, 'bold 14px "Fredoka", sans-serif', '#E8C8FF', '#1A1030', 4);
+    drawOutlinedText('2 · MOKRADŁA I MGŁA', 640, 472, 'bold 14px "Fredoka", sans-serif', '#D8F0EC', '#10302E', 4);
+    drawOutlinedText('1 · POLANA GRZYBÓW', 200, 472, 'bold 14px "Fredoka", sans-serif', '#FFF2B0', '#2A3A10', 4);
     ctx.restore();
     const t = game.frame;
-    // water glints
+    // water glints (wyłączone – mapa lasu)
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    for (let k = 0; k < 14; k += 1) {
+    for (let k = 0; k < 0; k += 1) {
       if (Math.sin(t * 0.07 + k * 2.1) < 0.6) continue;
       const y = 70 + hash01(k) * 160;
       const x = 2 * (140 + (y / 2 - 60) * 0.62 + Math.sin(y / 2 * 0.05) * 12);
@@ -4750,12 +5180,15 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       }
     });
     // sleeping Persi at the castle
-    const [bx, by] = MAP_NODES[MAP_NODES.length - 1];
-    const sleeper = buildForestEnemy('boss', Math.floor(t / 40) % 2, 'walk');
-    drawArtFootprint({ c: sleeper, ox: 5, oy: 7, fw: 24, fh: 21 }, bx + 22, by - 30, 36, 31.5, true);
-    ctx.fillStyle = '#FFFFFF';
-    drawZ(bx + 44, by - 44 - (t % 60) * 0.3, 2);
-    drawZ(bx + 56, by - 58 - (t % 60) * 0.3, 2);
+    LEVELS.forEach((L, bi) => {
+      if (!L.isBoss) return;
+      const [bx, by] = MAP_NODES[bi];
+      const left = bx > BASE_W - 90;
+      const sleeper = buildForestEnemy(BOSS(bi).art, Math.floor(t / 40) % 2, 'walk');
+      drawArtFootprint({ c: sleeper, ox: 5, oy: 7, fw: 24, fh: 21 }, left ? bx - 58 : bx + 22, by - 30, 36, 31.5, !left);
+      ctx.fillStyle = '#FFFFFF';
+      drawZ(left ? bx - 40 : bx + 44, by - 44 - (t % 60) * 0.3, 2);
+    });
     // Puszek hops between nodes
     const [fx, fy] = MAP_NODES[m.from];
     const [tx, ty] = MAP_NODES[m.sel];
@@ -4842,7 +5275,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     const scale = spawn.boss ? 2 : 1;
     const hopper = spawn.kind === 'hopper';
     const baseSpeed = enemyBaseSpeed(spawn, levelIndex);
-    const hp = spawn.boss ? 6 : 1;
+    const hp = spawn.boss ? bossMaxHp(levelIndex) : 1;
     return {
       x: spawn.x,
       y: spawn.y,
@@ -5028,7 +5461,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     game.leaderboardError = '';
     try {
       if (!EKIPA) { game.leaderboard = []; game.leaderboardLoaded = true; return; }
-      const url = `${SUPABASE_URL}/rest/v1/scores?select=player_name,score,level_label,created_at&level_label=like.${encodeURIComponent(`[${EKIPA}] P3*`)}&order=score.desc,created_at.asc&limit=${LEADERBOARD_LIMIT}`;
+      const url = `${SUPABASE_URL}/rest/v1/scores?select=player_name,score,level_label,created_at&level_label=like.${encodeURIComponent(`[${EKIPA}] ${MODE_TAG()}*`)}&order=score.desc,created_at.asc&limit=${LEADERBOARD_LIMIT}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: leaderboardHeaders()
@@ -5063,7 +5496,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         body: JSON.stringify([{
           player_name: game.playerName,
           score: game.score,
-          level_label: EKIPA_TAG + 'P3 ' + (sceneLabel || (game.level ? game.level.label : ''))
+          level_label: EKIPA_TAG + MODE_TAG() + (sceneLabel || (game.level ? game.level.label : ''))
         }])
       });
       if (!response.ok) {
@@ -6126,6 +6559,13 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   function damagePlayer(kind = 'hit') {
     const player = game.player;
     if (kind !== 'pit' && player.invul > 0) return;
+    if (kind === 'pit' && CALM()) {
+      audio.cue('fall');
+      respawnPlayer();
+      openWipe(game.player.x - game.cameraX + PLAYER_W / 2, game.player.y + PLAYER_H / 2);
+      setNotice('Spokojnie – wracasz bez straty serca.', '#C8ECFF', 120, 2, 'HOP');
+      return;
+    }
     if (kind !== 'pit' && player.bubble > 0) {
       player.bubble = 0;
       player.invul = 80;
@@ -6166,7 +6606,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     } else if (kind === 'szyszka') {
       setNotice('Szyszka! Wiewiórki celują – rób uniki.', '#FFBBBB', 140, 3, 'AU!');
     } else if (kind === 'wiatrolom') {
-      setNotice('Pień cię dogonił! Biegnij dalej w prawo!', '#FFBBBB', 140, 3, 'AU!');
+      setNotice(({ mud: 'Błotna fala cię dogoniła!', roots: 'Korzenie cię dosięgły!' }[game.level.chase && game.level.chase.kind] || 'Pień cię dogonił!') + ' Biegnij dalej w prawo!', '#FFBBBB', 140, 3, 'AU!');
     } else if (kind === 'kapusta') {
       setNotice('Kapusta przejechała Puszka. Przeskakuj je!', '#FFBBBB', 140, 3, 'AU!');
     } else if (kind === 'wloczka') {
@@ -6186,7 +6626,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     const player = game.player;
     const canGroundJump = player.onGround || player.coyote > 0;
     if (!canGroundJump && (player.airJumps <= 0 || HERO === 'C')) return false;
-    const strength = (player.powerFrames > 0 ? JUMP_FORCE * 1.20 : JUMP_FORCE) * (HERO === 'C' ? 1.08 : 1);
+    const strength = (player.powerFrames > 0 ? JUMP_FORCE * 1.20 : JUMP_FORCE) * (HERO === 'C' ? 1.08 : 1) * (player.inMud ? 0.8 : 1);
     player.vy = canGroundJump ? strength : strength * 0.96;
     player.onGround = false;
     player.coyote = 0;
@@ -6371,12 +6811,14 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
 
   function updateBossAI(enemy, grounded) {
     const player = game.player;
+    const bk = game.level.bossKind || 'king';
     const rage = enemy.maxHp - enemy.hp;
+    const calm = CALM() ? 14 : 0;
     if (enemy.counter && enemy.ai !== 'leap' && enemy.ai !== 'telegraph') enemy.counter = false;
     if (enemy.counter) enemy.pooped = false;
-    const phase = enemy.hp > 4 ? 1 : enemy.hp > 2 ? 2 : 3;
+    const phase = bossPhase(enemy);
     if (enemy.lastPhase !== phase) {
-      if (enemy.lastPhase) setNotice(phase === 2 ? 'Król się złości! Fale przy lądowaniu – podskocz nad nimi!' : 'Ostatnia faza! Król przywołuje muchomorki.', '#FFB5B5', 220, 4, `FAZA ${phase}`);
+      if (enemy.lastPhase) setNotice(phase === 2 ? BOSS().p2 : BOSS().p3, '#FFB5B5', 220, 4, `FAZA ${phase}`);
       enemy.lastPhase = phase;
     }
     const playerCenter = player.x + PLAYER_W / 2;
@@ -6385,27 +6827,37 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     enemy.aiTimer -= 1;
     switch (enemy.ai) {
       case 'patrol': {
-        const speed = enemy.vx + rage * 0.22;
+        const speed = enemy.vx + rage * 0.2;
         enemy.x += enemy.facingLeft ? -speed : speed;
         if (enemy.aiTimer <= 0 && grounded && Math.abs(playerCenter - bossCenter) < 600) {
           enemy.ai = 'telegraph';
-          enemy.aiTimer = Math.max(26, 50 - rage * 5);
+          enemy.aiTimer = Math.max(26, 50 - rage * 4) + calm;
           enemy.facingLeft = toward < 0;
           enemy.chargeDir = toward;
           audio.cue('meow');
-          if (phase >= 2 && Math.random() < 0.5) bossVolley(enemy);
+          const volley = bk === 'king' ? (phase >= 2 ? 0.5 : 0) : bk === 'toad' ? 0.35 + (phase - 1) * 0.15 : 0.4 + (phase - 1) * 0.1;
+          if (Math.random() < volley) bossVolley(enemy);
         }
         break;
       }
       case 'telegraph':
         if (enemy.aiTimer <= 0) {
           enemy.counter = false;
-          if (phase === 3 && Math.random() < 0.35) bossSummon(enemy);
-          if (rage >= 1 && Math.random() < (phase >= 2 ? 0.55 : 0.4)) {
+          const summon = bk === 'licho' ? (phase >= 2 ? 0.35 : 0) : (phase === 3 ? 0.35 : 0);
+          if (Math.random() < summon) bossSummon(enemy);
+          if (bk === 'licho' && Math.random() < (phase === 1 ? 0.25 : 0.42)) {
+            enemy.ai = 'blink';
+            enemy.aiTimer = 40;
+            enemy.ghost = true;
+            audio.tone(900, 0.2, 'sine', 0.06, 300, 0);
+            break;
+          }
+          const leapP = bk === 'toad' ? (phase === 1 ? 0.6 : 0.75) : (rage >= 1 ? (phase >= 2 ? 0.55 : 0.4) : 0);
+          if (Math.random() < leapP) {
             enemy.ai = 'leap';
-            enemy.vy = -10.5 - (phase === 3 ? 1.2 : 0);
+            enemy.vy = (bk === 'toad' ? -11.5 : -10.5) - (phase === 3 ? 1.2 : 0);
             enemy.airborne = true;
-            enemy.leapVx = toward * (2.3 + rage * 0.35);
+            enemy.leapVx = toward * ((bk === 'toad' ? 2.8 : 2.3) + rage * 0.3);
             enemy.facingLeft = toward < 0;
             enemy.leapsLeft = phase === 3 ? 1 : 0;
           } else {
@@ -6414,13 +6866,31 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
           }
         }
         break;
+      case 'blink':
+        if (enemy.aiTimer === 20) {
+          const room = (x) => x > enemy.minX + 20 && x + enemy.w < enemy.maxX - 20;
+          let nx = playerCenter + (Math.random() < 0.5 ? -230 : 230) - enemy.w / 2;
+          if (!room(nx)) nx = playerCenter - (nx - playerCenter + enemy.w / 2) - enemy.w / 2;
+          enemy.x = clamp(nx, enemy.minX, enemy.maxX - enemy.w);
+          enemy.y = Math.min(enemy.y, H - TILE - enemy.h - 2);
+          enemy.vy = 0;
+        }
+        if (enemy.aiTimer <= 0) {
+          enemy.ghost = false;
+          enemy.ai = 'telegraph';
+          enemy.aiTimer = 24 + calm;
+          enemy.chargeDir = playerCenter < enemy.x + enemy.w / 2 ? -1 : 1;
+          enemy.facingLeft = enemy.chargeDir < 0;
+          emitSpark(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#C89AFF', 18);
+        }
+        break;
       case 'charge': {
-        enemy.x += enemy.chargeDir * (3.3 + rage * 0.45);
+        enemy.x += enemy.chargeDir * (3.3 + rage * 0.4);
         if (game.frame % 3 === 0) emitDust(enemy.x + (enemy.chargeDir > 0 ? 0 : enemy.w), enemy.y + enemy.h - 4, 2);
         const hitWall = enemy.x <= enemy.minX || enemy.x + enemy.w >= enemy.maxX;
         if (hitWall || enemy.aiTimer <= 0) {
           enemy.ai = 'recover';
-          enemy.aiTimer = phase === 1 ? 54 : 40;
+          enemy.aiTimer = (phase === 1 ? 54 : 40) + calm;
           if (hitWall) { triggerShake(4, 8); if (phase >= 2) bossShockwave(enemy); }
         }
         break;
@@ -6435,7 +6905,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       default:
         if (enemy.aiTimer <= 0) {
           enemy.ai = 'patrol';
-          enemy.aiTimer = Math.max(50, 130 - rage * 16);
+          enemy.aiTimer = Math.max(50, 130 - rage * 14) + calm * 2;
           enemy.facingLeft = toward < 0;
         }
         break;
@@ -6453,6 +6923,8 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
   function updateEnemies() {
     for (const enemy of game.enemies) {
       if (enemy.kind === 'bee') { updateBee(enemy); continue; }
+      if (enemy.kind === 'owl') { updateOwl(enemy); continue; }
+      if (enemy.kind === 'root' && updateRoot(enemy)) continue;
       if (enemy.standingPlatform >= 0) {
         const platform = game.platforms[enemy.standingPlatform];
         if (platform) enemy.x += platform.dx;
@@ -6483,7 +6955,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
           triggerShake(7, 16);
           audio.cue('stomp');
           if (enemy.ai === 'leap') {
-            if (enemy.hp <= 4) bossShockwave(enemy);
+            if (bossPhase(enemy) >= 2 || game.level.bossKind === 'toad') bossShockwave(enemy);
             if (enemy.leapsLeft > 0) {
               enemy.leapsLeft -= 1;
               enemy.vy = -9.5;
@@ -6492,7 +6964,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
             } else if (enemy.counter) {
               // po kontrze: od razu szykuje atak, nietykalny aż do szarży
               enemy.ai = 'telegraph';
-              enemy.aiTimer = enemy.hp <= 2 ? 18 : 24;
+              enemy.aiTimer = (bossPhase(enemy) === 3 ? 18 : 24) + (CALM() ? 14 : 0);
               enemy.chargeDir = game.player.x + PLAYER_W / 2 < enemy.x + enemy.w / 2 ? -1 : 1;
               enemy.facingLeft = enemy.chargeDir < 0;
             } else {
@@ -6624,7 +7096,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     if (enemy.hp <= 0) {
       p3Disenchant(enemy);
       game.defeated.push({
-        kind: enemy.kind,
+        kind: enemy.boss ? BOSS().art : enemy.kind,
         sprite: enemy.kind === 'hopper' ? HOP_1 : CAT_1,
         x: enemy.x,
         y: enemy.y,
@@ -6646,7 +7118,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       emitSpark(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#CC66FF', 26);
       setFlash('rgba(255,240,180,0.35)', 0.35);
       audio.cue('bossDown');
-      setNotice('Grzybowy Król odczarowany! Ścieżka wolna.', '#FFE082', 220, 4, 'BRAWO');
+      setNotice(BOSS().freed, '#FFE082', 220, 4, 'BRAWO');
     }
   }
 
@@ -6654,6 +7126,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     const player = game.player;
     for (const enemy of game.enemies) {
       if (enemy.hp <= 0) continue;
+      if (enemy.hidden || enemy.ghost) continue;
       if (enemy.hitPause > 0 && !enemy.pooped) continue;
       if (!overlap(player.x + 4, player.y + 4, PLAYER_W - 8, PLAYER_H - 8, enemy.x, enemy.y, enemy.w, enemy.h)) continue;
       if (enemy.boss && enemy.counter) {
@@ -6702,7 +7175,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
         player.vy = -6;
         if (!game.guide.bossDashShown) {
           game.guide.bossDashShown = true;
-          setNotice('Król jest za duży na zryw – skacz mu na kapelusz!', '#FFB5B5', 180, 3, 'HMM');
+          setNotice(`${BOSS().name} jest za duży na zryw – skacz na ${BOSS().head}!`, '#FFB5B5', 180, 3, 'HMM');
         }
         continue;
       }
@@ -6758,7 +7231,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       }
 
       for (const enemy of game.enemies) {
-        if (enemy.pooped || enemy.hp <= 0) continue;
+        if (enemy.pooped || enemy.hp <= 0 || enemy.hidden || enemy.ghost) continue;
         if (overlap(bullet.x - bullet.radius, bullet.y - bullet.radius, bullet.radius * 2, bullet.radius * 2, enemy.x, enemy.y, enemy.w, enemy.h)) {
           enemy.pooped = true;
           enemy.poopTimer = enemy.boss ? 75 : 180;
@@ -6965,7 +7438,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
 
     if (game.level.isBoss && game.enemies.length > 0 && !game.guide.bossIntroShown) {
       game.guide.bossIntroShown = true;
-      setNotice('Gdy pojawi się „!”, szykuje szarżę. Przeskocz go i skacz mu na kapelusz – 6 razy!', '#FFB5B5', 260, 4, 'FINAŁ');
+      setNotice(`Gdy pojawi się „!”, szykuje atak. Przeskocz go i skacz na ${BOSS().head} – ${bossMaxHp()} razy!`, '#FFB5B5', 260, 4, 'FINAŁ');
     }
   }
 
@@ -7619,6 +8092,22 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
 
   function drawEnemies() {
     for (const enemy of game.enemies) {
+      if (enemy.hidden) { drawRootMound(enemy); continue; }
+      if (enemy.ghost) {
+        const gx = enemy.x - game.cameraX + enemy.w / 2;
+        for (let k = 0; k < 4; k += 1) {
+          const a = game.frame * 0.2 + k * 1.6;
+          ctx.fillStyle = k % 2 ? 'rgba(200,154,255,0.7)' : 'rgba(154,224,122,0.7)';
+          ctx.fillRect(snap(gx + Math.cos(a) * 30), snap(enemy.y + enemy.h / 2 + Math.sin(a) * 24), 6, 6);
+        }
+        continue;
+      }
+      if (enemy.kind === 'owl' && enemy.owlState === 'aim') {
+        const k = 1 - enemy.owlT / 40;
+        const w = snap(20 + k * 30);
+        ctx.fillStyle = `rgba(10,6,24,${(0.25 + k * 0.4).toFixed(2)})`;
+        ctx.fillRect(snap(enemy.tx - game.cameraX - w / 2), enemy.ty - 4, w, 4);
+      }
       if (!enemy.pooped && (enemy.hitPause > 0 || enemy.counter) && Math.floor(game.frame / 3) % 2 === 0) continue;
       const hopper = enemy.kind === 'hopper';
       const grounded = enemy.standingPlatform >= 0;
@@ -7632,15 +8121,16 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
       if (grounded) {
         ctx.fillStyle = 'rgba(20,12,40,0.25)';
         ctx.fillRect(drawX + 6 * enemy.scale, drawY + enemy.h - 2, enemy.w - 12 * enemy.scale, 4);
-      } else if (enemy.kind === 'bee') {
+      } else if (enemy.kind === 'bee' || enemy.kind === 'owl') {
         ctx.fillStyle = 'rgba(20,12,40,0.12)';
         ctx.fillRect(drawX + 12, drawY + enemy.h + 30, enemy.w - 24, 3);
       }
-      const kind = enemy.boss ? 'boss' : enemy.kind;
+      const kind = enemy.boss ? BOSS().art : enemy.kind;
       let state = 'walk';
       if (enemy.pooped) state = 'stun';
-      else if (bossWarn || hopWarn || enemy.throwWarn) state = 'warn';
-      else if (!grounded && enemy.kind !== 'bee') state = 'air';
+      else if (bossWarn || hopWarn || enemy.throwWarn || enemy.owlState === 'aim') state = 'warn';
+      else if (enemy.owlState === 'dive') state = 'air';
+      else if (!grounded && enemy.kind !== 'bee' && enemy.kind !== 'owl') state = 'air';
       const surface = buildForestEnemy(kind, enemy.walkFrame, state);
       if (enemy.boss && enemy.ai === 'charge') {
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -7648,7 +8138,14 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
           ctx.fillRect(snap(drawX + (enemy.chargeDir > 0 ? -20 - index * 16 : enemy.w + 8 + index * 16)), snap(drawY + 20 + index * 14), 12, 4);
         }
       }
-      drawArtFootprint({ c: surface, ox: 5, oy: 7, fw: 24, fh: 21 }, drawX, drawY, enemy.w, enemy.h, enemy.kind === 'bee' || enemy.kind === 'hedgehog' || enemy.kind === 'squirrel' ? enemy.facingLeft : enemy.facingLeft);
+      if (enemy.boss && BOSS().art === 'licho') {
+        const glow = ctx.createRadialGradient(drawX + enemy.w / 2, drawY + enemy.h / 2, 4, drawX + enemy.w / 2, drawY + enemy.h / 2, enemy.w);
+        glow.addColorStop(0, 'rgba(200,154,255,0.35)');
+        glow.addColorStop(1, 'rgba(200,154,255,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(drawX - enemy.w / 2, drawY - enemy.h / 2, enemy.w * 2, enemy.h * 2);
+      }
+      drawArtFootprint({ c: surface, ox: 5, oy: 7, fw: 24, fh: 21 }, drawX, drawY, enemy.w, enemy.h, enemy.facingLeft);
       if (enemy.pooped) {
         for (let index = 0; index < 3; index += 1) {
           const angle = game.frame * 0.11 + index * 2.1;
@@ -7682,9 +8179,27 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     }
   }
 
+  function drawRootMound(enemy) {
+    const rumble = enemy.rootState === 'rumble';
+    const x = snap(enemy.x - game.cameraX + enemy.w / 2 + (rumble ? (Math.floor(game.frame / 2) % 2 ? 2 : -2) : 0));
+    if (x < -40 || x > BASE_W + 40) return;
+    const y = snap(enemy.y + enemy.h);
+    ctx.fillStyle = '#4A3018';
+    ctx.fillRect(x - 18, y - 6, 36, 6);
+    ctx.fillStyle = '#6A4626';
+    ctx.fillRect(x - 12, y - 10, 24, 6);
+    ctx.fillStyle = '#4E8A3E';
+    ctx.fillRect(x - 2, y - 16, 3, 7);
+    ctx.fillRect(x + 1, y - 18, 5, 3);
+    if (rumble) {
+      ctx.fillStyle = '#FFE65A';
+      ctx.fillRect(x - 2, y - 40, 4, 12);
+      ctx.fillRect(x - 2, y - 24, 4, 4);
+    }
+  }
   function drawDefeated() {
     for (const body of game.defeated) {
-      const surface = buildForestEnemy(body.kind === 'boss' ? 'boss' : (body.kind || 'walker'), 0, 'stun');
+      const surface = buildForestEnemy(body.kind || 'walker', 0, 'stun');
       ctx.save();
       ctx.translate(body.x - game.cameraX + body.w / 2, body.y + body.h / 2);
       ctx.rotate(body.rot);
@@ -7909,7 +8424,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     drawPanel(px, top, pw, 34, fill, rim, 8);
     ctx.fillStyle = '#FFE082';
     ctx.font = 'bold 14px monospace';
-    ctx.fillText(game.level.isBoss ? 'FINAŁ' : `${game.levelIndex + 1}/${LEVELS.length - 1}`, px + 12, top + 23);
+    { const w = WORLDS[Math.max(0, worldOf(game.levelIndex))]; ctx.fillText(game.level.isBoss ? 'BOSS' : `${game.levelIndex - w.start + 1}/${w.end - w.start}`, px + 12, top + 23); }
     const trackX = px + (game.level.isBoss ? 62 : 50);
     const trackW = px + pw - 22 - trackX;
     const trackY = top + 16;
@@ -7973,7 +8488,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     ctx.textAlign = 'center';
     ctx.fillStyle = '#FFE082';
     ctx.font = 'bold 13px monospace';
-    ctx.fillText(game.level.isBoss ? 'WIELKI FINAŁ' : `POZIOM ${game.levelIndex + 1} Z ${LEVELS.length - 1}`, BASE_W / 2, y + 24);
+    ctx.fillText(game.levelIndex === LEVELS.length - 1 ? 'WIELKI FINAŁ' : `${WORLDS[Math.max(0, worldOf(game.levelIndex))].name.toUpperCase()} · ${levelBadge(game.levelIndex).split(' · ')[1]}`, BASE_W / 2, y + 24);
     drawOutlinedText(name, BASE_W / 2, y + 60, 'bold 30px monospace', '#FFFFFF', OUTLINE, 5);
     const best = Number(game.progress.s[String(game.levelIndex)]) || 0;
     for (let index = 0; index < 3; index += 1) {
@@ -7992,7 +8507,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     }
     if (game.titleCard > 0) return null;
     if (game.level.isBoss && game.enemies.length > 0) {
-      return { title: 'FINAŁ', text: '„!” = szarża. Przeskocz go i wskocz mu na głowę.', color: '#FFB5B5' };
+      return { title: 'BOSS', text: `„!” = atak. Przeskocz i skacz na ${BOSS().head}.`, color: '#FFB5B5' };
     }
     if (game.player.powerFrames > 0) {
       return {
@@ -8871,7 +9386,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     ctx.restore();
     const lc = game.lastClear || { earned: [true, false, false], seconds: 0, carrots: 0, carrotsTotal: 0, diamonds: 0, diamondsTotal: 0, heartsLost: 0 };
     ctx.textAlign = 'center';
-    drawOutlinedText(game.level.isBoss ? 'KRÓL ODCZAROWANY!' : 'POZIOM ZALICZONY!', BASE_W / 2, 70, 'bold 30px monospace', '#FFD94A', '#3A2406', 6);
+    drawOutlinedText(game.level.isBoss ? BOSS().done : 'POZIOM ZALICZONY!', BASE_W / 2, 70, 'bold 30px monospace', '#FFD94A', '#3A2406', 6);
     ctx.fillStyle = '#CFE9FF';
     ctx.font = '14px monospace';
     ctx.fillText(levelName(game.level), BASE_W / 2, 94);
@@ -9111,7 +9626,7 @@ body.touchLandscape .mobileBtn.active { box-shadow:inset 0 0 0 999px rgba(255,25
     drawPanel(BASE_W / 2 - 300, 388, 600, 84, 'rgba(16,12,34,0.82)', 'rgba(255,224,130,0.35)', 8);
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 18px monospace';
-    ctx.fillText('Polana Grzybów odczarowana! Ciąg dalszy nastąpi…', BASE_W / 2, 412);
+    ctx.fillText('Cały Zaczarowany Las odczarowany! Świetliki znów świecą.', BASE_W / 2, 412);
     ctx.fillStyle = '#FFE9C8';
     ctx.font = '15px monospace';
     ctx.fillText('Pani tuli Puszka, a on aż promienieje z radości.', BASE_W / 2, 436);
