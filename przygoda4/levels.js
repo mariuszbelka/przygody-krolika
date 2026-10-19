@@ -6,90 +6,102 @@
   'use strict';
   const LEVELS = [
     {
-      name: 'Pierwsze truskawki', reward: 'Grządka truskawek', colors: 4, moves: 11, stars: [8400, 12300],
+      name: 'Pierwsze truskawki', reward: 'Grządka truskawek', item: 'beds', colors: 4, moves: 11, stars: [8400, 12300],
       tip: 'Przesuń owoc, żeby ułożyć trzy takie same w rzędzie.',
       goals: [{ type: 'col', col: 0, n: 45 }],
       map: ['.......', '.......', '.......', '.......', '.......', '.......', '.......']
     },
     {
-      name: 'Jabłka i śliwki', reward: 'Płotek', colors: 4, moves: 10, stars: [10100, 15800],
+      name: 'Jabłka i śliwki', reward: 'Płotek', item: 'fence', colors: 4, moves: 10, stars: [10100, 15800],
       tip: 'Cztery w rzędzie dają marchew-rakietę!',
       goals: [{ type: 'col', col: 1, n: 40 }, { type: 'col', col: 2, n: 40 }],
       map: ['.......', '.......', '.......', '.......', '.......', '.......', '.......', '.......']
     },
     {
-      name: 'Chwasty!', reward: 'Jabłoń', colors: 5, moves: 16, stars: [4500, 6400],
+      name: 'Cytrynowy kwadrat', reward: 'Słoneczniki', item: 'sunflowers', colors: 4, moves: 12, stars: [8100, 12500],
+      tip: 'Ułóż kwadrat 2×2 – wyleci motylek i sam znajdzie, co trzeba zbić!',
+      goals: [{ type: 'col', col: 3, n: 40 }],
+      map: ['.......', '.......', '.......', '.......', '.......', '.......', '.......']
+    },
+    {
+      name: 'Pierwsze chwasty', reward: 'Karmnik dla ptaszków', item: 'birdhouse', colors: 4, moves: 10, stars: [4600, 10000],
+      tip: 'Chwasty znikają, gdy zbijesz owoc, który na nich stoi.',
+      goals: [{ type: 'weed', n: 'auto' }],
+      map: ['.......', '.......', '..www..', '.wwwww.', '..www..', '.......', '.......']
+    },
+    {
+      name: 'Chwasty!', reward: 'Jabłoń', item: 'appletree', colors: 5, moves: 16, stars: [4500, 6400],
       tip: 'Zbij owoce stojące na chwastach. Kwadrat 2×2 wypuszcza motylka.',
       goals: [{ type: 'weed', n: 'auto' }],
       map: ['........', '........', '..wwww..', '.wwwwww.', '.wwwwww.', '..wwww..', '........', '........']
     },
     {
-      name: 'Skrzynki babci', reward: 'Ławka', colors: 5, moves: 14, stars: [3600, 4700],
+      name: 'Skrzynki babci', reward: 'Ławka', item: 'bench', colors: 5, moves: 14, stars: [3600, 4700],
       tip: 'Skrzynka pęka, gdy ułożysz owoce tuż obok niej.',
       goals: [{ type: 'crate', n: 'auto' }],
       map: ['........', '........', 'c......c', 'cc.cc.cc', '........', '..cccc..', '........', '........']
     },
     {
-      name: 'Owocowa rakieta', reward: 'Budka dla Persiego', colors: 5, moves: 20, stars: [7100, 9300],
+      name: 'Owocowa rakieta', reward: 'Budka dla Persiego', item: 'cathouse', colors: 5, moves: 20, stars: [7100, 9300],
       tip: 'Ułóż L albo T – powstanie dynia-bomba. Pięć w rzędzie to kłębek Persiego!',
       goals: [{ type: 'col', col: 3, n: 45 }, { type: 'col', col: 4, n: 45 }],
       map: ['........', '........', '........', '........', '........', '........', '........', '........']
     },
     {
-      name: 'Konfitury', reward: 'Kwiaty babci', colors: 5, moves: 30, stars: [6100, 8500],
+      name: 'Konfitury', reward: 'Kwiaty babci', item: 'flowers', colors: 5, moves: 30, stars: [6100, 8500],
       tip: 'Sprowadź słoiki z konfiturą na sam dół planszy.',
       goals: [{ type: 'jar', n: 2 }],
       map: ['..j..j..', '........', '........', '........', '........', '........', '........']
     },
     {
-      name: 'Serce ogrodu', reward: 'Ścieżka', colors: 5, moves: 13, stars: [3600, 4500],
+      name: 'Serce ogrodu', reward: 'Ścieżka', item: 'path', colors: 5, moves: 13, stars: [3600, 4500],
       goals: [{ type: 'weed', n: 'auto' }],
       map: ['.##..##.', '........', '..wwww..', '.wwwwww.', '.wwwwww.', '..wwww..', '#..ww..#', '##....##']
     },
     {
-      name: 'Pajęczyny', reward: 'Studnia', colors: 5, moves: 17, stars: [4200, 5800],
+      name: 'Pajęczyny', reward: 'Studnia', item: 'well', colors: 5, moves: 17, stars: [4200, 5800],
       tip: 'Owoc w pajęczynie się nie rusza. Ułóż go w rzędzie, żeby go uwolnić.',
       goals: [{ type: 'web', n: 'auto' }],
       map: ['........', '........', '.x....x.', '..x..x..', '...xx...', '..x..x..', '.x....x.', '........']
     },
     {
-      name: 'Grządki', reward: 'Huśtawka', colors: 5, moves: 16, stars: [5100, 7000],
+      name: 'Grządki', reward: 'Huśtawka', item: 'swing', colors: 5, moves: 16, stars: [5100, 7000],
       goals: [{ type: 'weed', n: 'auto' }, { type: 'crate', n: 'auto' }],
       map: ['........', '........', 'c..cc..c', 'w..ww..w', 'ww.ww.ww', 'wwwwwwww', '........', '........']
     },
     {
-      name: 'Spiżarnia', reward: 'Ul z pszczołami', colors: 5, moves: 41, stars: [8000, 10500],
+      name: 'Spiżarnia', reward: 'Ul z pszczołami', item: 'hive', colors: 5, moves: 41, stars: [8000, 10500],
       goals: [{ type: 'jar', n: 2 }, { type: 'web', n: 'auto' }],
       map: ['.j....j.', '........', 'x.x..x.x', '........', '.x.xx.x.', '........', '........']
     },
     {
-      name: 'Murek', reward: 'Krzaki borówek', colors: 5, moves: 17, stars: [5300, 7500],
+      name: 'Murek', reward: 'Krzaki borówek', item: 'bushes', colors: 5, moves: 17, stars: [5300, 7500],
       tip: 'Ciemne skrzynki trzeba trafić dwa razy.',
       goals: [{ type: 'crate', n: 'auto' }, { type: 'weed', n: 'auto' }],
       map: ['........', '........', '........', 'CCC..CCC', 'www..www', 'www..www', '........', '........']
     },
     {
-      name: 'Owocobranie', reward: 'Śliwa', colors: 6, moves: 26, stars: [5700, 7600],
+      name: 'Owocobranie', reward: 'Śliwa', item: 'plumtree', colors: 6, moves: 26, stars: [5700, 7600],
       goals: [{ type: 'col', col: 0, n: 35 }, { type: 'col', col: 3, n: 35 }, { type: 'col', col: 5, n: 35 }],
       map: ['.........', '.........', '.........', '.........', '.........', '.........', '.........', '.........', '.........']
     },
     {
-      name: 'Zarośnięty sad', reward: 'Stół babci Ludwiki', colors: 5, moves: 16, stars: [6900, 9200],
+      name: 'Zarośnięty sad', reward: 'Stół babci Ludwiki', item: 'table', colors: 5, moves: 16, stars: [6900, 9200],
       goals: [{ type: 'weed', n: 'auto' }, { type: 'web', n: 'auto' }],
       map: ['#.......#', '.........', '.wwwwwww.', '.wXwwwXw.', '.wwwXwww.', '.wXwwwXw.', '.wwwwwww.', '.........', '#.......#']
     },
     {
-      name: 'Słoiki w skrzynkach', reward: 'Altanka', colors: 5, moves: 35, stars: [7400, 10000],
+      name: 'Słoiki w skrzynkach', reward: 'Altanka', item: 'gazebo', colors: 5, moves: 35, stars: [7400, 10000],
       goals: [{ type: 'jar', n: 3 }, { type: 'crate', n: 'auto' }],
       map: ['..j..j..', 'c......c', '.c....c.', '........', '..cccc..', '........', '........']
     },
     {
-      name: 'Wielkie porządki', reward: 'Staw z liliami', colors: 6, moves: 28, stars: [5500, 7000],
+      name: 'Wielkie porządki', reward: 'Staw z liliami', item: 'pond', colors: 6, moves: 28, stars: [5500, 7000],
       goals: [{ type: 'weed', n: 'auto' }, { type: 'crate', n: 'auto' }, { type: 'web', n: 'auto' }],
       map: ['.........', '.........', 'c.c...c.c', 'wwwwwwwww', 'wXw.w.wXw', 'wwwwwwwww', '..C...C..', '.........', '.........']
     },
     {
-      name: 'Sroka Szarlotka', reward: 'Girlandy na święto ogrodu', colors: 5, moves: 30, stars: [11600, 14400], boss: { hp: 40, every: 3, n: 2 },
+      name: 'Sroka Szarlotka', reward: 'Girlandy na święto ogrodu', item: 'garland', colors: 5, moves: 30, stars: [11600, 14400], boss: { hp: 40, every: 3, n: 2 },
       tip: 'Sroka zakrywa owoce błyskotkami. Rani ją każdy owoc zbity tuż obok niej i każda rakieta, która w nią trafi!',
       goals: [{ type: 'boss', n: 40 }],
       map: ['...bb...', '...bb...', '........', '........', '........', '........', '........', '........', '........']

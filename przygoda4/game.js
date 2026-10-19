@@ -15,6 +15,13 @@
   const P = { u: 0, s: {}, b: {}, mode: 'S', seen: -1 };
   try { Object.assign(P, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch (e) { /* */ }
   const save = () => { try { localStorage.setItem(STORE, JSON.stringify(P)); } catch (e) { /* */ } };
+  if (P.v !== 2) {
+    // v2: wstawiono dwa łatwe poziomy jako 3. i 4. – przesuwamy zapisany postęp
+    const shift = (o) => { const n = {}; for (const k in o) { const i = Number(k); n[i >= 2 ? i + 2 : i] = o[k]; } return n; };
+    if (P.s && Object.keys(P.s).length) { P.s = shift(P.s); P.b = shift(P.b || {}); if (P.u >= 2) P.u += 2; }
+    P.v = 2;
+    save();
+  }
   const params = new URLSearchParams(location.search);
   if (params.has('odblokuj')) P.u = LEVELS.length - 1;
 
@@ -370,7 +377,8 @@
     S.bossAnim.act = Math.max(0, S.bossAnim.act - dt);
     for (const h of ['P', 'C']) { S.hero[h].jump = Math.max(0, S.hero[h].jump - dt); S.hero[h].happy = Math.max(0, S.hero[h].happy - dt); }
     if (S.overlay) S.overlay.t += dt;
-    if (S.rewardT > 0) S.rewardT -= dt;
+    updateCeremony(dt);
+    updateTricks(dt);
     if (S.scene === 'play' && !S.busy && !S.overlay && S.G && S.G.status === 'play') {
       S.idle += dt;
       if (S.idle > 6 && !S.hint) S.hint = R.findHint(S.G);
@@ -661,6 +669,8 @@
       else if (p.shape === 'leaf' || p.shape === 'feather') { ctx.beginPath(); ctx.ellipse(0, 0, s, s * 0.4, 0, 0, Math.PI * 2); ctx.fill(); }
       else if (p.shape === 'spark') { ctx.fillRect(-s, -0.75, s * 2, 1.5); }
       else if (p.shape === 'conf') { ctx.fillRect(-s / 2, -s / 4, s, s / 2); }
+      else if (p.shape === 'heart') { ctx.rotate(-p.rot); ctx.beginPath(); ctx.moveTo(0, s * 0.35); ctx.bezierCurveTo(-s, -s * 0.2, -s * 0.4, -s * 0.9, 0, -s * 0.35); ctx.bezierCurveTo(s * 0.4, -s * 0.9, s, -s * 0.2, 0, s * 0.35); ctx.fill(); }
+      else if (p.shape === 'note') { ctx.rotate(-p.rot); ctx.beginPath(); ctx.ellipse(0, 0, s * 0.45, s * 0.32, -0.4, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(s * 0.3, -s * 1.2, s * 0.14, s * 1.2); }
       else ctx.fillRect(-s / 2, -s / 2, s, s);
       ctx.restore();
     }
@@ -823,9 +833,35 @@
       else fr = st.jump > 0 ? Art.CAT.frames.air : (Math.floor(S.t / 4) % 5 === 4 ? Art.CAT.frames.yawn : Art.CAT.frames.sit);
       const meta = h === 'P' ? Art.RABBIT : Art.CAT;
       const sc = rad * 1.5 / meta.w;
+      const tf = trickTransform(h, rad);
+      if (tf.fr != null) fr = tf.fr;
+      ctx.save();
+      ctx.translate(x + tf.dx, y - jump - tf.dy);
+      ctx.rotate(tf.rot);
+      ctx.scale(tf.flip ? -tf.sx : tf.sx, tf.sy);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, fr * meta.w, 0, meta.w, meta.h, x - meta.w * sc / 2, y - meta.h * sc * 0.62 - jump, meta.w * sc, meta.h * sc);
+      ctx.drawImage(img, fr * meta.w, 0, meta.w, meta.h, -meta.w * sc / 2, -meta.h * sc * 0.62, meta.w * sc, meta.h * sc);
       ctx.imageSmoothingEnabled = true;
+      if (st.trick && st.trick.kind === 'carrot') {
+        const k = st.trick.t / st.trick.d;
+        ctx.translate(rad * 0.35, -rad * 0.1);
+        ctx.scale(1 - k * 0.8, 1 - k * 0.8);
+        Art.carrot(ctx, rad * 0.9);
+      }
+      ctx.restore();
+    }
+    if (st.say) {
+      const a = Math.min(1, (1.3 - st.say.t) * 4);
+      const by = y - rad - 26 - Math.min(1, st.say.t * 6) * 8;
+      ctx.globalAlpha = Math.max(0, a);
+      ctx.font = '700 16px Fredoka, sans-serif';
+      const tw = ctx.measureText(st.say.text).width + 22;
+      const bx = Math.min(W - tw / 2 - 6, Math.max(tw / 2 + 6, x));
+      ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = 'rgba(90,52,22,0.5)'; ctx.lineWidth = 2;
+      roundRect(bx - tw / 2, by - 15, tw, 30, 14); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 6, by + 14); ctx.lineTo(x, by + 24); ctx.lineTo(x + 6, by + 14); ctx.fill();
+      text(st.say.text, bx, by + 1, 16, '#5A2A06');
+      ctx.globalAlpha = 1;
     }
     text(h === 'P' ? 'Puszek' : 'Persi', x, y + rad + 12, 13, '#3A2A1A', 'center', 700, 'rgba(255,255,255,0.9)', 4);
     if (ready) text('dotknij!', x, y - rad - 10, 12, '#7A2A06', 'center', 700, '#FFF2A0', 4);
@@ -833,11 +869,85 @@
   }
 
   function toggleHero(h) {
-    if (S.busy || !S.G || S.G.status !== 'play') return;
-    if (S.chargeV[h] < R.HERO_NEED) { popText(heroPos(h).x, heroPos(h).y - 50, h === 'P' ? 'Zbieraj jabłka!' : 'Zbieraj śliwki!', '#FFFFFF'); SND.cue('bad'); return; }
-    S.power = S.power === h ? null : h;
-    S.sel = null;
-    SND.cue('select');
+    if (S.G && S.G.status === 'play' && !S.busy && S.chargeV[h] >= R.HERO_NEED) {
+      S.power = S.power === h ? null : h;
+      S.sel = null;
+      SND.cue('select');
+      return;
+    }
+    heroTrick(h);
+  }
+
+  // ---------------------------------------------------------------- sztuczki po dotknięciu postaci
+  const TRICKS = {
+    P: { flip: [0.9, 'Hop!', 'boing'], binky: [0.85, 'Binky!', 'boing'], sneeze: [1.0, 'A… a…', null], carrot: [1.2, 'Mniam!', 'crunch'], ears: [1.0, 'Hej!', 'giggle'] },
+    C: { spin: [1.0, 'Mrrau!', 'meow'], stretch: [1.3, 'Uaaa…', 'yawn'], purr: [1.4, 'Mrrr…', 'purr'], pounce: [0.9, 'Hops!', 'boing'], roll: [1.1, 'Miau!', 'meow'] }
+  };
+  function heroTrick(h) {
+    const st = S.hero[h];
+    if (st.trick && st.trick.t < st.trick.d * 0.6) return;
+    const names = Object.keys(TRICKS[h]);
+    let kind = names[Math.floor(Math.random() * names.length)];
+    if (kind === st.lastTrick) kind = names[(names.indexOf(kind) + 1) % names.length];
+    st.lastTrick = kind;
+    const [d, say, snd] = TRICKS[h][kind];
+    st.trick = { kind, t: 0, d, fx: 0 };
+    st.say = { text: say, t: 0 };
+    SND.resume();
+    if (snd) SND.cue(snd);
+    st.taps = (st.taps || 0) + 1;
+    if (S.G && S.G.status === 'play' && st.taps % 4 === 1 && S.chargeV[h] < R.HERO_NEED) {
+      const p = heroPos(h);
+      popText(p.x, p.y + 30, h === 'P' ? 'Jabłka mnie ładują!' : 'Śliwki mnie ładują!', '#FFFFFF', 0.8);
+    }
+  }
+  function updateTricks(dt) {
+    for (const h of ['P', 'C']) {
+      const st = S.hero[h];
+      if (st.say) { st.say.t += dt; if (st.say.t > 1.3) st.say = null; }
+      const tr = st.trick;
+      if (!tr) continue;
+      const before = tr.t;
+      tr.t += dt;
+      const p = heroPos(h);
+      const cross = (x) => before < x && tr.t >= x;
+      if (tr.kind === 'sneeze' && cross(0.45)) {
+        SND.cue('sneeze'); st.say = { text: 'APSIK!', t: 0 };
+        for (let k = 0; k < 14; k += 1) S.parts.push({ x: p.x + 20, y: p.y - 6, vx: 2 + Math.random() * 4, vy: (Math.random() - 0.5) * 3, g: 0.05, life: 0.7, max: 0.7, size: 4 + Math.random() * 6, color: 'rgba(255,255,255,0.9)', shape: 'circle', rot: 0, vr: 0 });
+      }
+      if (tr.kind === 'carrot' && (cross(0.35) || cross(0.7))) { SND.cue('crunch'); for (let k = 0; k < 5; k += 1) burst(p.x + 16, p.y - 4, '#FF9A3C', 'square', 4); }
+      if (tr.kind === 'purr' && Math.random() < dt * 6) S.parts.push({ x: p.x + (Math.random() - 0.5) * 30, y: p.y - 20, vx: (Math.random() - 0.5) * 0.6, vy: -1.2, g: -0.01, life: 1, max: 1, size: 9, color: '#FF6A90', shape: 'heart', rot: 0, vr: 0 });
+      if ((tr.kind === 'flip' || tr.kind === 'pounce' || tr.kind === 'binky') && cross(tr.d * 0.85)) { for (let k = 0; k < 6; k += 1) burst(p.x, p.y + 20, '#FFFFFF', 'star', 5); SND.cue('land'); }
+      if (tr.kind === 'ears' && cross(0.1)) for (let k = 0; k < 3; k += 1) S.parts.push({ x: p.x + (k - 1) * 14, y: p.y - 30, vx: (k - 1) * 0.8, vy: -1.5, g: -0.01, life: 0.9, max: 0.9, size: 8, color: '#FFD43B', shape: 'note', rot: 0, vr: 0 });
+      if (tr.t >= tr.d) st.trick = null;
+    }
+  }
+  function trickTransform(h, rad) {
+    const tf = { dx: 0, dy: 0, rot: 0, sx: 1, sy: 1, flip: false, fr: null };
+    const tr = S.hero[h].trick;
+    if (!tr) return tf;
+    const k = Math.min(1, tr.t / tr.d);
+    const F = h === 'P' ? Art.RABBIT.frames : Art.CAT.frames;
+    switch (tr.kind) {
+      case 'flip': tf.dy = Math.sin(Math.PI * k) * rad * 1.2; tf.rot = -Math.PI * 2 * Math.min(1, k * 1.15); tf.fr = F.jump; break;
+      case 'binky': tf.dy = Math.abs(Math.sin(Math.PI * k * 2)) * rad * 0.7; tf.rot = Math.sin(k * Math.PI * 4) * 0.55; tf.fr = k > 0.9 ? F.happy : F.jump; break;
+      case 'sneeze':
+        if (k < 0.45) { const q = k / 0.45; tf.sy = 1 + 0.16 * q; tf.sx = 1 - 0.08 * q; tf.rot = -0.18 * q; tf.fr = F.blink; }
+        else { const q = (k - 0.45) / 0.55; const e = Math.exp(-q * 6); tf.sy = 1 - 0.22 * e; tf.sx = 1 + 0.22 * e; tf.dx = -e * rad * 0.35; tf.rot = 0.2 * e; tf.fr = F.happy; }
+        break;
+      case 'carrot': tf.dy = Math.abs(Math.sin(k * Math.PI * 6)) * rad * 0.06; tf.sy = 1 + Math.sin(k * Math.PI * 12) * 0.04; tf.fr = F.happy; break;
+      case 'ears': tf.rot = Math.sin(k * Math.PI * 6) * 0.18 * (1 - k); tf.sy = 1 + Math.sin(k * Math.PI * 8) * 0.06; tf.fr = Math.floor(k * 8) % 2 ? F.happy : F.idle; break;
+      case 'spin': tf.flip = Math.floor(k * 10) % 2 === 1; tf.dy = Math.abs(Math.sin(k * Math.PI * 5)) * rad * 0.15; tf.fr = Math.floor(k * 10) % 2 ? F.walk0 : F.walk1; break;
+      case 'stretch': tf.sx = 1 + 0.4 * Math.sin(Math.PI * k); tf.sy = 1 - 0.22 * Math.sin(Math.PI * k); tf.fr = F.yawn; break;
+      case 'purr': tf.sy = 1 + 0.04 * Math.sin(S.t * 40); tf.rot = Math.sin(S.t * 3) * 0.06; tf.fr = Math.floor(k * 4) % 2 ? F.sleep0 : F.sit; break;
+      case 'pounce':
+        if (k < 0.35) { const q = k / 0.35; tf.sy = 1 - 0.25 * q; tf.sx = 1 + 0.15 * q; tf.fr = F.crouch; }
+        else { const q = (k - 0.35) / 0.65; tf.dy = Math.sin(Math.PI * q) * rad * 1.0; tf.fr = F.air; tf.rot = (q - 0.5) * 0.7; }
+        break;
+      case 'roll': tf.rot = Math.PI * 2 * k * (k < 0.5 ? 1 : 1); tf.dy = Math.sin(Math.PI * k) * rad * 0.25; tf.fr = F.crouch; break;
+      default: break;
+    }
+    return tf;
   }
 
   // ---------------------------------------------------------------- nakładki
@@ -880,7 +990,7 @@
       text(SND.musicOn ? 'Muzyka: włączona (M)' : 'Muzyka: wyłączona (M)', W / 2, y + 268, 14, '#7A4E2A', 'center', 600);
       S.buttons.push({ id: 'music', x: W / 2 - 110, y: y + 254, w: 220, h: 28, fn: () => SND.toggleMusic() });
     } else if (o.kind === 'win') {
-      const ph = Math.min(400, H - 20), x = (W - pw) / 2, y = (H - ph) / 2;
+      const ph = Math.min(o.first ? 480 : 400, H - 16), x = (W - pw) / 2, y = (H - ph) / 2;
       panel(x, y, pw, ph, 26);
       text('Brawo!', W / 2, y + 42, 34, '#5A3416');
       for (let i = 0; i < 3; i += 1) {
@@ -896,10 +1006,32 @@
         ctx.restore();
       }
       text(`Wynik: ${o.score}`, W / 2, y + 168, 20, '#7A4E2A', 'center', 600);
-      text(o.first ? 'Nowość w ogrodzie:' : 'Rekord poziomu:', W / 2, y + 204, 15, '#9A6A3A', 'center', 600);
-      text(o.first ? level.reward : String(P.b[S.li] || o.score), W / 2, y + 230, Math.min(22, pw / 18), '#3A7A1A');
+      if (o.first && level.item) {
+        const iy = y + 262, isz = Math.min(64, (ph - 330) * 0.55);
+        const pop = Math.min(1, Math.max(0, (o.t - 1.4) * 3));
+        text('Nowość w ogrodzie:', W / 2, y + 194, 15, '#9A6A3A', 'center', 600);
+        if (pop > 0) {
+          ctx.save();
+          ctx.translate(W / 2, iy);
+          ctx.rotate(S.t * 0.6);
+          for (let k = 0; k < 10; k += 1) { ctx.rotate(Math.PI / 5); ctx.fillStyle = 'rgba(255,215,90,0.35)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(isz * 1.4, -isz * 0.16); ctx.lineTo(isz * 1.4, isz * 0.16); ctx.fill(); }
+          ctx.restore();
+          ctx.save();
+          const s2 = pop < 1 ? pop * 1.2 : 1 + Math.sin(S.t * 3) * 0.03;
+          ctx.translate(W / 2, iy); ctx.scale(s2, s2); ctx.translate(-W / 2, -iy);
+          ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(W / 2, iy, isz * 0.7, 0, Math.PI * 2); ctx.fill();
+          Garden.icon(ctx, level.item, W / 2, iy, isz, S.t);
+          ctx.strokeStyle = '#E8B84A'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(W / 2, iy, isz * 0.66, 0, Math.PI * 2); ctx.stroke();
+          ctx.restore();
+          if (pop > 0 && pop < 0.12) SND.cue('reward');
+        }
+        text(level.reward, W / 2, iy + isz * 0.66 + 22, Math.min(22, pw / 18), '#3A7A1A');
+      } else {
+        text('Rekord poziomu:', W / 2, y + 204, 15, '#9A6A3A', 'center', 600);
+        text(String(P.b[S.li] || o.score), W / 2, y + 230, Math.min(22, pw / 18), '#3A7A1A');
+      }
       const last = S.li === LEVELS.length - 1;
-      button('next', W / 2 - 110, y + ph - 116, 220, 46, last ? 'Do ogrodu!' : 'Dalej', { fn: () => { if (last) openMap(); else openMap(); } });
+      button('next', W / 2 - 110, y + ph - 116, 220, 46, o.first ? 'Zobacz w ogrodzie!' : 'Dalej', { size: 18, fn: () => { openMap(); } });
       button('again', W / 2 - 110, y + ph - 58, 220, 38, 'Jeszcze raz', { size: 16, c1: '#BFE8FF', c2: '#5AA8E8', edge: '#1A4A7A', ink: '#06223A', fn: () => startLevel(S.li) });
     } else if (o.kind === 'lose' || o.kind === 'extra') {
       const ph = 300, x = (W - pw) / 2, y = (H - ph) / 2;
@@ -928,33 +1060,99 @@
     lines.forEach((l, i) => text(l, x, yy + i * size * 1.25 - (lines.length - 1) * size * 0.6, size, color, 'center', 600));
   }
 
-  // ---------------------------------------------------------------- ekran tytułowy i mapa
+  // ---------------------------------------------------------------- ekran tytułowy, ogród i mapa
+  function ownedItems() { const s = new Set(); LEVELS.forEach((L, i) => { if (P.s[i] > 0 && L.item) s.add(L.item); }); return s; }
+  function nextItem() { const L = LEVELS[Math.min(P.u, LEVELS.length - 1)]; return L && !(P.s[P.u] > 0) ? L.item : null; }
+
   function openMap() {
-    S.scene = 'map'; S.overlay = null; S.G = null; S.L = null;
-    if (S.newReward >= 0) { S.rewardT = 2.5; SND.cue('reward'); }
+    S.scene = 'map'; S.overlay = null; S.G = null; S.L = null; S.parts = []; S.texts = [];
+    if (S.newReward >= 0) {
+      S.ceremony = { li: S.newReward, kind: LEVELS[S.newReward].item, t: 0, landed: false };
+      S.mapView = 'garden';
+      S.newReward = -1;
+    } else if (!S.mapView) S.mapView = 'nodes';
   }
 
-  function gardenScene(showAll) {
-    Art.drawGardenBase(ctx, W, H, S.t);
-    const unlocked = Object.keys(P.s).length;
-    const sc = Math.min(W, H) * 0.22;
-    Art.GARDEN_ITEMS.forEach((it, i) => {
-      if (!showAll && !(P.s[i] > 0)) return;
-      let s = sc;
-      if (i === S.newReward && S.rewardT > 0) { const k = 1 - S.rewardT / 2.5; s = sc * Math.min(1, k * 3) * (1 + Math.max(0, 0.3 - k) ); if (Math.random() < 0.4) sparkle(it.x * W, it.y * H - sc * 0.3, '#FFE24A', 1); }
-      if (s > 0) Art.drawGardenItem(ctx, it.kind, it.x * W, it.y * H, s, S.t);
-    });
-    return unlocked;
+  // Puszek kica po trawie, Persi wyleguje się przy budce (albo przy babci)
+  function gardenActors(list, lay) {
+    const u = lay.u;
+    const cheer = S.ceremony && S.ceremony.landed;
+    const gy = lay.pos.granny.y + u * 0.35;
+    const range = Math.min(W * 0.3, u * 3);
+    const px = lay.pos.granny.x + u * 0.9 + Math.sin(S.t * 0.35) * range;
+    const dir = Math.cos(S.t * 0.35) >= 0 ? 1 : -1;
+    const hop = Math.abs(Math.sin(S.t * (cheer ? 9 : 5))) * u * (cheer ? 0.35 : 0.12);
+    list.push({ y: gy, fn: () => drawSprite('rabbit', cheer ? 12 : (hop > u * 0.05 ? 10 : 0), px, gy - hop, u * 0.75, dir < 0) });
+    const owned = ownedItems();
+    const cp = owned.has('cathouse') ? { x: lay.pos.cathouse.x - u * 0.75, y: lay.pos.cathouse.y + u * 0.05 } : { x: lay.pos.granny.x - u * 0.55, y: lay.pos.granny.y + u * 0.1 };
+    const yawn = Math.floor(S.t / 3) % 4 === 3;
+    list.push({ y: cp.y, fn: () => drawSprite('cat', cheer ? (Math.floor(S.t * 8) % 2 ? 2 : 4) : yawn ? 5 : 4, cp.x, cp.y - (cheer ? Math.abs(Math.sin(S.t * 8)) * u * 0.25 : 0), u * 0.7, false) });
+  }
+  function drawSprite(name, fr, x, y, h, flip) {
+    const img = Art.imgs[name];
+    if (!img) return;
+    const meta = name === 'rabbit' ? Art.RABBIT : Art.CAT;
+    const sc = h / meta.h;
+    ctx.save();
+    ctx.translate(x, y);
+    if (flip) ctx.scale(-1, 1);
+    ctx.fillStyle = 'rgba(30,50,10,0.22)'; ctx.beginPath(); ctx.ellipse(0, 0, meta.w * sc * 0.32, meta.w * sc * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, fr * meta.w, 0, meta.w, meta.h, -meta.w * sc / 2, -meta.h * sc * 0.9, meta.w * sc, meta.h * sc);
+    ctx.imageSmoothingEnabled = true;
+    ctx.restore();
+  }
+
+  function drawGardenScene(opts = {}) {
+    const owned = ownedItems();
+    const c = S.ceremony;
+    const reveal = c ? { kind: c.kind, k: (c.t - 0.8) / 1.0 } : null;
+    if (c) owned.delete(c.kind);
+    return Garden.draw(ctx, W, H, S.t, owned, reveal, { cheer: c && c.landed ? 1 : 0, next: opts.next ? nextItem() : null, actors: opts.actors === false ? null : gardenActors });
+  }
+
+  function updateCeremony(dt) {
+    const c = S.ceremony;
+    if (!c) return;
+    c.t += dt;
+    if (!c.landed && c.t >= 1.15) {
+      c.landed = true;
+      const lay = Garden.layout(W, H);
+      const p = lay.pos[c.kind];
+      const u = lay.u * p.s;
+      for (let k = 0; k < 26; k += 1) S.parts.push({ x: p.x + (Math.random() - 0.5) * u * 1.4, y: p.y - Math.random() * u * 0.2, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 3, g: 0.12, life: 0.8, max: 0.8, size: 6 + Math.random() * 8, color: 'rgba(230,210,170,0.9)', shape: 'circle', rot: 0, vr: 0 });
+      for (let k = 0; k < 30; k += 1) burst(p.x, p.y - u * 0.6, ['#FFE24A', '#FFFFFF', '#FF9AD0'][k % 3], 'star', 6 + Math.random() * 6);
+      for (let k = 0; k < 60; k += 1) confetti();
+      S.shake = 8;
+      SND.cue('reward');
+      SND.cue('land');
+    }
+  }
+  function ceremonyCamera() {
+    const c = S.ceremony;
+    const lay = Garden.layout(W, H);
+    const p = lay.pos[c.kind];
+    const u = lay.u * p.s;
+    const e = (x) => x * x * (3 - 2 * x);
+    let z = 1;
+    if (c.t < 0.8) z = 1 + 0.65 * e(c.t / 0.8);
+    else if (c.t < 3.0) z = 1.65;
+    else z = 1 + 0.65 * (1 - e(Math.min(1, (c.t - 3.0) / 0.9)));
+    if (['fence', 'garland', 'path'].includes(c.kind)) z = 1 + (z - 1) * 0.3;
+    const fx = p.x, fy = p.y - u * 0.6;
+    let tx = W / 2 - fx * z, ty = H / 2 - fy * z;
+    tx = Math.min(0, Math.max(W - W * z, tx));
+    ty = Math.min(0, Math.max(H - H * z, ty));
+    return { z, tx, ty };
   }
 
   function drawTitle() {
-    gardenScene(false);
+    drawGardenScene({ actors: false });
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, 0, W, H);
     const tsize = Math.min(64, W * 0.1);
     text('Ogród', W / 2, H * 0.17, tsize * 0.8, '#FFFFFF', 'center', 700, '#C2183A', tsize * 0.16);
     text('Babci Ludwiki', W / 2, H * 0.17 + tsize, tsize, '#FFE07A', 'center', 700, '#7A2A06', tsize * 0.18);
     text('Przygoda 4 · Puszek i Persi', W / 2, H * 0.17 + tsize * 1.75, Math.min(20, W * 0.045), '#5A3416', 'center', 600, 'rgba(255,255,255,0.85)', 5);
-    // owoce dookoła
     for (let k = 0; k < 6; k += 1) {
       const a = S.t * 0.6 + k * Math.PI / 3;
       Art.blit(ctx, Art.fruitSprite(k, 54, Math.floor(S.t * 0.8 + k) % 7 === 0 ? 'blink' : 'happy'), W / 2 + Math.cos(a) * Math.min(W * 0.4, 260), H * 0.47 + Math.sin(a) * 44, 1);
@@ -968,7 +1166,6 @@
     const by = H * 0.66;
     const bw = Math.min(300, W - 60);
     button('play', W / 2 - bw / 2, by, bw, 60, 'Graj!', { size: 28, fn: () => { SND.resume(); SND.cue('click'); openMap(); } });
-    // tryb
     const mw = bw / 2 - 6;
     const mode = (m, x, label) => {
       const on = P.mode === m;
@@ -981,19 +1178,20 @@
     S.buttons.push({ id: 'home', x: 10, y: H - 44, w: 130, h: 40, fn: () => { location.href = `../${location.search}`; } });
     text(SND.musicOn ? '♪ muzyka wł.' : '♪ muzyka wył.', W - 70, H - 24, 14, '#3A5A1A', 'center', 700, 'rgba(255,255,255,0.85)', 4);
     S.buttons.push({ id: 'mus', x: W - 140, y: H - 44, w: 130, h: 40, fn: () => { SND.resume(); SND.toggleMusic(); } });
+    drawParticles();
   }
   function setMode(m) { P.mode = m; save(); SND.resume(); SND.cue('select'); }
 
   function mapLayout() {
     const portrait = H >= W;
-    const cols = portrait ? 4 : 8;
+    const cols = portrait ? 4 : 9;
     const rows = Math.ceil(LEVELS.length / cols);
-    const top = portrait ? 140 : 100, bottom = portrait ? 90 : 70;
+    const top = portrait ? 190 : 150, bottom = portrait ? 70 : 60;
     const nodes = [];
     for (let i = 0; i < LEVELS.length; i += 1) {
       const row = Math.floor(i / cols), k = i % cols;
       const col = row % 2 ? cols - 1 - k : k;
-      const x = W * (0.1 + 0.8 * (col + 0.5) / cols);
+      const x = W * (0.08 + 0.84 * (col + 0.5) / cols);
       const y = H - bottom - (H - top - bottom) * (row + 0.5) / rows + Math.sin(i * 1.3) * 8;
       nodes.push({ x, y });
     }
@@ -1001,11 +1199,42 @@
     return nodes;
   }
 
+  function mapHeader() {
+    const owned = ownedItems().size;
+    const total = Object.values(P.s).reduce((a, b) => a + b, 0);
+    const hw = Math.min(300, W - 108), hx = Math.max(W / 2 - hw / 2, 92), hc = hx + hw / 2;
+    panel(hx, 12, hw, 62, 20);
+    text('Ogród Babci Ludwiki', hc, 34, Math.min(20, hw / 13), '#5A3416');
+    drawStar(hc - 60, 56, 9, '#FFD43B', '#8A5A00');
+    text(`${total}/${LEVELS.length * 3}`, hc - 26, 57, 14, '#7A4E2A', 'center', 700);
+    text(`🌻 ${owned}/${LEVELS.length}`, hc + 42, 57, 14, '#3A7A1A', 'center', 700);
+    button('back', 12, 12, 70, 40, '←', { size: 20, c1: '#FFFFFF', c2: '#E8E0D0', edge: '#A89878', ink: '#5A3416', fn: () => { S.scene = 'title'; } });
+    if (!S.ceremony) {
+      const tw = Math.min(130, (W - 40) / 2);
+      const tab = (id, x, label) => {
+        const on = S.mapView === id;
+        button(`tab${id}`, x, 86, tw, 38, label, on ? { size: 15, c1: '#FFE27A', c2: '#F2A52A', fn: () => { S.mapView = id; } } : { size: 15, c1: '#FFFFFF', c2: '#E8E0D0', edge: '#A89878', ink: '#7A6A50', fn: () => { S.mapView = id; SND.cue('click'); } });
+      };
+      tab('nodes', W / 2 - tw - 6, 'Poziomy');
+      tab('garden', W / 2 + 6, 'Ogród');
+    }
+  }
+
   function drawMap() {
-    gardenScene(false);
+    if (S.ceremony) { drawCeremony(); return; }
+    if (S.mapView === 'garden') {
+      drawGardenScene({ next: true });
+      drawParticles();
+      mapHeader();
+      const owned = ownedItems().size;
+      const msg = owned === LEVELS.length ? 'Ogród gotowy na wielkie święto! 🎉' : owned ? 'Każdy wygrany poziom dodaje coś do ogrodu.' : 'Wygraj pierwszy poziom – ogród zacznie rosnąć!';
+      text(msg, W / 2, H - 24, Math.min(16, W * 0.04), '#5A2A06', 'center', 700, 'rgba(255,255,255,0.9)', 5);
+      return;
+    }
+    drawGardenScene({ actors: false });
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 0, W, H);
     const nodes = mapLayout();
-    // ścieżka
-    ctx.strokeStyle = 'rgba(255,248,230,0.85)'; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.setLineDash([2, 18]);
+    ctx.strokeStyle = 'rgba(255,248,230,0.95)'; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.setLineDash([2, 18]);
     ctx.beginPath(); nodes.forEach((n, i) => (i ? ctx.lineTo(n.x, n.y) : ctx.moveTo(n.x, n.y))); ctx.stroke();
     ctx.setLineDash([]); ctx.lineCap = 'butt';
     const rad = Math.min(30, W * 0.055);
@@ -1024,29 +1253,49 @@
       if (boss && open) { ctx.save(); ctx.beginPath(); ctx.arc(n.x, n.y, rad * 0.9, 0, Math.PI * 2); ctx.clip(); Art.drawMagpie(ctx, n.x - rad * 0.2, n.y + rad * 0.2, rad * 1.6, S.t, 0, 0); ctx.restore(); }
       else text(open ? String(i + 1) : '🔒', n.x, n.y + 1, rad * 0.8, open ? '#5A2A06' : '#FFFFFF');
       if (open) for (let k = 0; k < 3; k += 1) drawStar(n.x + (k - 1) * rad * 0.62, n.y - rad - 4 - (k === 1 ? 4 : 0), rad * 0.28, k < st ? '#FFD43B' : 'rgba(255,255,255,0.7)', '#8A5A00');
-      if (cur && !S.rewardT) {
+      if (cur) {
         const img = Art.imgs.rabbit;
         if (img) { ctx.imageSmoothingEnabled = false; ctx.drawImage(img, 0, 0, 34, 36, n.x - rad * 1.1, n.y - rad * 2.6 - Math.abs(Math.sin(S.t * 4)) * 8, rad * 2.2, rad * 2.3); ctx.imageSmoothingEnabled = true; }
       }
       if (open) S.buttons.push({ id: `node${i}`, x: n.x - rad, y: n.y - rad, w: rad * 2, h: rad * 2, fn: () => { SND.resume(); SND.cue('click'); startLevel(i); } });
     });
-    const total = Object.values(P.s).reduce((a, b) => a + b, 0);
-    const hw = Math.min(300, W - 108), hx = Math.max(W / 2 - hw / 2, 92), hc = hx + hw / 2;
-    panel(hx, 12, hw, 62, 20);
-    text('Ogród Babci Ludwiki', hc, 34, Math.min(20, hw / 13), '#5A3416');
-    drawStar(hc - 30, 56, 9, '#FFD43B', '#8A5A00');
-    text(`${total} / ${LEVELS.length * 3}`, hc + 14, 57, 15, '#7A4E2A', 'center', 700);
-    button('back', 12, 12, 70, 40, '←', { size: 20, c1: '#FFFFFF', c2: '#E8E0D0', edge: '#A89878', ink: '#5A3416', fn: () => { S.scene = 'title'; } });
-    if (S.rewardT > 0 && S.newReward >= 0) {
-      const k = Math.min(1, (2.5 - S.rewardT) * 3);
-      ctx.globalAlpha = Math.min(1, S.rewardT * 2);
-      panel(W / 2 - 170, H * 0.42, 340, 70, 20, 'rgba(255,250,220,0.97)');
-      text('Nowość w ogrodzie!', W / 2, H * 0.42 + 22, 15, '#9A6A3A', 'center', 600);
-      text(LEVELS[S.newReward].reward, W / 2, H * 0.42 + 48, 22 * (0.8 + 0.2 * k), '#3A7A1A');
-      ctx.globalAlpha = 1;
-      if (S.rewardT <= 0.05) S.newReward = -1;
+    drawParticles();
+    mapHeader();
+  }
+
+  function drawCeremony() {
+    const c = S.ceremony;
+    const cam = ceremonyCamera();
+    ctx.save();
+    if (S.shake > 0) ctx.translate((Math.random() - 0.5) * S.shake, (Math.random() - 0.5) * S.shake);
+    ctx.translate(cam.tx, cam.ty);
+    ctx.scale(cam.z, cam.z);
+    drawGardenScene({});
+    // promienie za nowym elementem
+    if (c.landed) {
+      const lay = Garden.layout(W, H); const p = lay.pos[c.kind]; const u = lay.u * p.s;
+      const a = Math.max(0, 1 - (c.t - 1.15) / 2.2);
+      if (a > 0) {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(p.x, p.y - u * 0.6); ctx.rotate(S.t * 0.5);
+        for (let k = 0; k < 12; k += 1) { ctx.rotate(Math.PI / 6); ctx.fillStyle = `rgba(255,240,170,${0.18 * a})`; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(u * 2.2, -u * 0.25); ctx.lineTo(u * 2.2, u * 0.25); ctx.fill(); }
+        ctx.restore();
+      }
     }
-    if (P.s[LEVELS.length - 1]) text('Ogród gotowy na wielkie święto! 🎉', W / 2, H - 30, 16, '#7A2A06', 'center', 700, '#FFF2A0', 5);
+    drawParticles();
+    ctx.restore();
+    if (c.landed) {
+      const k = Math.min(1, (c.t - 1.15) * 3);
+      const pw = Math.min(360, W - 32);
+      const y = 18 + (1 - k) * -120;
+      panel(W / 2 - pw / 2, y, pw, 92, 22, 'rgba(255,250,225,0.97)');
+      text('Nowość w ogrodzie!', W / 2, y + 26, 16, '#9A6A3A', 'center', 600);
+      text(LEVELS[c.li].reward, W / 2, y + 60, Math.min(26, pw / 13) * (1 + Math.max(0, 0.25 - (c.t - 1.15)) ), '#3A7A1A');
+    }
+    if (c.t > 2.0) {
+      const bw = Math.min(240, W - 60);
+      button('cerNext', W / 2 - bw / 2, H - 86, bw, 54, 'Dalej', { fn: () => { S.ceremony = null; S.mapView = 'nodes'; S.parts = []; SND.cue('click'); } });
+    }
+    S.buttons.push({ id: 'cerSkip', x: 0, y: 0, w: W, h: H - 100, fn: () => { if (c.t < 2.0) c.t = Math.max(c.t, 1.2); } });
   }
 
   // ---------------------------------------------------------------- pętla
@@ -1068,7 +1317,6 @@
       if (S.flash > 0) { ctx.fillStyle = `rgba(255,255,240,${S.flash * 0.6})`; ctx.fillRect(0, 0, W, H); }
       drawOverlay();
     }
-    if (S.scene !== 'play') drawParticles();
   }
 
   let last = performance.now();

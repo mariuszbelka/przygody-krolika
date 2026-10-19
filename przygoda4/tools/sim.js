@@ -9,7 +9,7 @@ const LEVELS = require('../levels.js');
 
 const N = Number(process.argv[2]) || 200;
 const WRITE = process.argv.includes('--write');
-const TARGET = (li) => (li < 4 ? 0.9 : li < 10 ? 0.75 : li < 15 ? 0.65 : 0.6); // szansa wygranej gracza modelowego w Czadowo
+const TARGET = (li) => (li < 6 ? 0.9 : li < 12 ? 0.75 : li < 17 ? 0.65 : 0.6); // szansa wygranej gracza modelowego w Czadowo
 const SMART = 0.75;
 
 function play(level, seed, mode, budget) {

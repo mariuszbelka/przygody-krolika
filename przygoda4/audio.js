@@ -184,7 +184,14 @@
           [523, 466, 415, 349].forEach((f, i) => this.tone(f, 0.3, 'triangle', 0.08, 0, i * 0.16));
           break;
         case 'moves': this.tone(990, 0.08, 'square', 0.04, 0); this.tone(990, 0.08, 'square', 0.04, 0, 0.12); break;
-        case 'reward': for (let k = 0; k < 8; k += 1) this.bell(PENTA[k], k * 0.06, 0.06); break;
+        case 'reward': for (let k = 0; k < 8; k += 1) this.bell(PENTA[k], k * 0.06, 0.06); this.tone(130.8, 0.6, 'sine', 0.12, 65, 0); break;
+        case 'boing': this.tone(180, 0.35, 'sine', 0.14, 620, 0, { vib: 12 }); this.tone(620, 0.2, 'triangle', 0.05, 300, 0.25); break;
+        case 'giggle': for (let k = 0; k < 5; k += 1) this.tone(900 + (k % 2) * 160, 0.07, 'triangle', 0.06, 0, k * 0.08); break;
+        case 'crunch': this.noise(0.08, 0.14, 'lowpass', 2500, 600, 0, 1); this.noise(0.06, 0.08, 'bandpass', 3000, 0, 0.05, 2); break;
+        case 'sneeze': this.noise(0.25, 0.16, 'bandpass', 1800, 5000, 0, 1.5); this.tone(700, 0.15, 'square', 0.04, 300); break;
+        case 'meow': this.tone(560, 0.16, 'sawtooth', 0.05, 900, 0, { vib: 8 }); this.tone(900, 0.28, 'sawtooth', 0.05, 480, 0.14, { vib: 8 }); break;
+        case 'yawn': this.tone(420, 0.8, 'sine', 0.08, 220, 0, { vib: 5, att: 0.2 }); this.noise(0.6, 0.03, 'lowpass', 900, 300, 0.1, 0.7); break;
+        case 'purr': for (let k = 0; k < 24; k += 1) this.noise(0.05, 0.08, 'lowpass', 160, 0, k * 0.055, 0.8); break;
         default: break;
       }
     },

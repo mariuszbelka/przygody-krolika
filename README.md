@@ -9,7 +9,7 @@ Gry przeglądarkowe o króliku **Puszku** (biały, z grzywką i krótkimi brzosk
 | Przygoda 1: Puszek i marchewki | platformówka, 8 krain | [`/przygoda1/`](https://mariuszbelka.github.io/przygody-krolika/przygoda1/) |
 | Przygoda 2: Sroka Złodziejka | zagadki, 15 pokoi | [`/przygoda2/`](https://mariuszbelka.github.io/przygody-krolika/przygoda2/) |
 | Przygoda 3: Zaczarowany Las | platformówka, 3 krainy, 13 poziomów | [`/przygoda3/`](https://mariuszbelka.github.io/przygody-krolika/przygoda3/) |
-| Przygoda 4: Ogród Babci Ludwiki | układanka „3 w rzędzie”, 16 poziomów | [`/przygoda4/`](https://mariuszbelka.github.io/przygody-krolika/przygoda4/) |
+| Przygoda 4: Ogród Babci Ludwiki | układanka „3 w rzędzie”, 18 poziomów | [`/przygoda4/`](https://mariuszbelka.github.io/przygody-krolika/przygoda4/) |
 
 Strona główna (`index.html`) pozwala wybrać typ gry (skakanie albo zagadki) i przygodę. Pokazuje też zdobyte gwiazdki i przekazuje kod ekipy `?ekipa=` do każdej gry.
 
@@ -130,7 +130,9 @@ Gra jest generowana z kodu Przygody 1: `przygoda3/tools/patch_p3.py` łączy `pr
 Walidator osiągalności (`tools/validate3.js`) sprawdza dla obu postaci metę i wszystkie słoiki na każdym poziomie.
 
 ## Przygoda 4: Ogród Babci Ludwiki (`/przygoda4/`)
-Układanka „3 w rzędzie”. Sroka Szarlotka narobiła bałaganu w ogrodzie babci, a każdy wygrany poziom odbudowuje jeden element ogrodu: grządkę, płotek, jabłoń, budkę Persiego, huśtawkę i tak dalej.
+Układanka „3 w rzędzie”. Sroka Szarlotka narobiła bałaganu w ogrodzie babci, a każdy wygrany poziom dodaje jeden z 18 elementów ogrodu: grządkę truskawek, płotek, słoneczniki, karmnik, jabłoń, budkę Persiego, huśtawkę, staw z rybką, altankę i tak dalej.
+Nowy element spada do ogrodu z odbiciem, kamera na niego najeżdża, a babcia Ludwika, Puszek i Persi się cieszą. Na mapie można przełączać widok „Poziomy” i „Ogród” – w ogrodzie wszystko żyje (huśtawka, pszczoły, rybka w stawie, para nad szarlotką).
+Dotknięcie Puszka albo Persiego w trakcie gry wywołuje sztuczkę (salto, binky, kichnięcie, chrupanie marchewki, pogoń za ogonem, przeciąganie się, mruczenie…); gdy moc jest naładowana, dotknięcie ją włącza.
 Owoce: truskawka, jabłko, śliwka, cytryna, borówka, morela. Działa w pionie i w poziomie, myszą i palcem.
 
 | Ułożenie | Kafelek | Efekt |
