@@ -9,6 +9,7 @@ Gry przeglądarkowe o króliku **Puszku** (biały, z grzywką i krótkimi brzosk
 | Przygoda 1: Puszek i marchewki | platformówka, 8 krain | [`/przygoda1/`](https://mariuszbelka.github.io/przygody-krolika/przygoda1/) |
 | Przygoda 2: Sroka Złodziejka | zagadki, 15 pokoi | [`/przygoda2/`](https://mariuszbelka.github.io/przygody-krolika/przygoda2/) |
 | Przygoda 3: Zaczarowany Las | platformówka, 3 krainy, 13 poziomów | [`/przygoda3/`](https://mariuszbelka.github.io/przygody-krolika/przygoda3/) |
+| Przygoda 4: Ogród Babci Ludwiki | układanka „3 w rzędzie”, 16 poziomów | [`/przygoda4/`](https://mariuszbelka.github.io/przygody-krolika/przygoda4/) |
 
 Strona główna (`index.html`) pozwala wybrać typ gry (skakanie albo zagadki) i przygodę. Pokazuje też zdobyte gwiazdki i przekazuje kod ekipy `?ekipa=` do każdej gry.
 
@@ -127,3 +128,24 @@ Bossowie mają po 3 fazy. Po każdym trafieniu odskakują i są chwilę nietykal
 
 Gra jest generowana z kodu Przygody 1: `przygoda3/tools/patch_p3.py` łączy `przygoda1/index.html` z plikami `p3_levels.js` (poziomy z segmentów), `p3_add.js`, `p3_draw.js` i `p3_map.js`.
 Walidator osiągalności (`tools/validate3.js`) sprawdza dla obu postaci metę i wszystkie słoiki na każdym poziomie.
+
+## Przygoda 4: Ogród Babci Ludwiki (`/przygoda4/`)
+Układanka „3 w rzędzie”. Sroka Szarlotka narobiła bałaganu w ogrodzie babci, a każdy wygrany poziom odbudowuje jeden element ogrodu: grządkę, płotek, jabłoń, budkę Persiego, huśtawkę i tak dalej.
+Owoce: truskawka, jabłko, śliwka, cytryna, borówka, morela. Działa w pionie i w poziomie, myszą i palcem.
+
+| Ułożenie | Kafelek | Efekt |
+|---|---|---|
+| 4 w linii | marchew-rakieta | czyści rząd albo kolumnę |
+| kwadrat 2×2 | motylek | leci w najbardziej potrzebne pole |
+| L / T | dynia-bomba | wybuch 3×3 |
+| 5 w linii | kłębek Persiego | znika cały kolor |
+
+Dwa specjalne zamienione ze sobą dają kombinację (np. rakieta + bomba = 3 rzędy i 3 kolumny, kłębek + rakieta = cały kolor zmienia się w rakiety).
+Zbite jabłka ładują Puszka (czyści kolumnę), śliwki – Persiego (czyści rząd).
+Cele: zebrać owoce, oczyścić chwasty, rozbić skrzynki, zerwać pajęczyny, sprowadzić słoiki z konfiturą na dół i pokonać Srokę, która zakrywa owoce błyskotkami.
+Tryby: **Spokojnie** (więcej ruchów, po ich końcu babcia daje +5) i **Czadowo** (koniec ruchów = przegrana). Zostałe ruchy zamieniają się w rakiety („wielkie sprzątanie”).
+
+Logika (`rules.js`) jest czysta i działa też w Node:
+- `tools/test.js` gra setki partii na każdym poziomie i sprawdza, czy animacje odtwarzane z kroków zgadzają się z planszą, czy nie ma dziur ani gotowych trójek i czy zawsze jest możliwy ruch.
+- `tools/sim.js` to symulator Monte Carlo, który ustawia liczbę ruchów (szansa wygranej gracza modelowego: ok. 90% na początku, ok. 60% przy Sroce) i progi gwiazdek.
+Debug: `?poziom=N` otwiera od razu poziom N, `?odblokuj` odblokowuje wszystkie.

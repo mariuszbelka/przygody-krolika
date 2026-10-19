@@ -92,6 +92,7 @@ h1 span { color: var(--gold); }
 }
 .play:active { transform: translateY(2px); box-shadow: 0 2px 0 #8A5A00; }
 .p3 .play { background: linear-gradient(180deg, #D8C0FF 0%, #9A6CF0 100%); border-color: #F0E6FF; color: #1A0E30; box-shadow: 0 4px 0 #4A2A8A; }
+.p4 .play { background: linear-gradient(180deg, #FFB8C8 0%, #F2414E 100%); border-color: #FFE6EC; color: #3A0610; box-shadow: 0 4px 0 #8A1A2A; }
 .p2 .play { background: linear-gradient(180deg, #B8F0FF 0%, #4AA0E0 100%); border-color: #E6F8FF; color: #06223A; box-shadow: 0 4px 0 #1A4A7A; }
 .tip {
   margin-top: 26px; padding: 14px 16px; border-radius: 16px; background: rgba(255,255,255,.04); border: 1px dashed var(--line);
@@ -137,13 +138,23 @@ footer a { color: #A9B6CC; }
   <div class="types" role="tablist" aria-label="Typ gry">
     <button class="type on" data-type="all" role="tab" aria-selected="true"><span class="ico">✨</span><span><span class="t">Wszystkie</span><span class="d">Pokaż każdą przygodę</span></span></button>
     <button class="type" data-type="plat" role="tab" aria-selected="false"><span class="ico">🏃</span><span><span class="t">Skacz i zbieraj</span><span class="d">Platformówki: refleks, wrogowie, bossowie</span></span></button>
-    <button class="type" data-type="puz" role="tab" aria-selected="false"><span class="ico">🧩</span><span><span class="t">Zagadki</span><span class="d">Bez pośpiechu: myśl i kombinuj</span></span></button>
+    <button class="type" data-type="puz" role="tab" aria-selected="false"><span class="ico">🧩</span><span><span class="t">Zagadki i układanki</span><span class="d">Bez pośpiechu: myśl, układaj, kombinuj</span></span></button>
   </div>
 
   <div class="step">2 · Która przygoda?</div>
   <div class="cards">
+    <article class="card p4" data-type="puz">
+      <div class="thumb"><img src="docs/hub/p4.jpg" alt="Plansza z owocami i Sroką w Przygodzie 4" loading="lazy"><span class="badge">🍓 Układanka</span><span class="badge new">NOWOŚĆ</span></div>
+      <div class="body">
+        <div class="kicker">Przygoda 4</div>
+        <h2>Ogród Babci Ludwiki</h2>
+        <p>Układaj owoce po trzy w rzędzie, odpalaj marchew-rakiety, dynie-bomby, motylki i kłębek Persiego. Każdy wygrany poziom odbudowuje kawałek ogrodu, a na końcu czeka Sroka.</p>
+        <ul class="feats"><li>16 poziomów</li><li>moce Puszka i Persiego</li><li>Spokojnie / Czadowo</li><li>działa też pionowo</li></ul>
+        <div class="foot"><span class="prog" data-prog="p4"></span><a class="play keepq" href="przygoda4/">Graj ▶</a></div>
+      </div>
+    </article>
     <article class="card p3" data-type="plat">
-      <div class="thumb"><img src="docs/hub/p3.jpg" alt="Nocny las w Przygodzie 3" loading="lazy"><span class="badge">🏃 Platformówka</span><span class="badge new">NOWOŚĆ</span></div>
+      <div class="thumb"><img src="docs/hub/p3.jpg" alt="Nocny las w Przygodzie 3" loading="lazy"><span class="badge">🏃 Platformówka</span></div>
       <div class="body">
         <div class="kicker">Przygoda 3</div>
         <h2>Zaczarowany Las</h2>
@@ -174,7 +185,7 @@ footer a { color: #A9B6CC; }
     </article>
   </div>
 
-  <div class="tip"><b>Od czego zacząć?</b> Dla młodszych graczy: <b>Przygoda 3 w trybie Spokojnie</b> (wolniejsi wrogowie, upadek nie zabiera serca). Kto woli myśleć niż skakać: <b>Przygoda 2</b>. Na telefonie najlepiej grać w poziomie.</div>
+  <div class="tip"><b>Od czego zacząć?</b> Dla młodszych graczy: <b>Przygoda 3 w trybie Spokojnie</b> (wolniejsi wrogowie, upadek nie zabiera serca). Kto woli myśleć niż skakać: <b>Przygoda 2</b>, a kto lubi układać owoce: <b>Przygoda 4</b> (działa też pionowo). Platformówki na telefonie najlepiej w poziomie.</div>
 
   <footer>
     <span>Postęp zapisuje się w tej przeglądarce.</span>
@@ -197,12 +208,13 @@ footer a { color: #A9B6CC; }
 
   function read(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
   function stars(obj) { var n = 0; if (obj && obj.s) for (var k in obj.s) n += Number(obj.s[k]) || 0; return n; }
-  var p1 = read('PuszekV3Progress'), p3 = read('PuszekP3Progress'), p2 = read('PuszekPersiSroka.v1');
+  var p1 = read('PuszekV3Progress'), p3 = read('PuszekP3Progress'), p2 = read('PuszekPersiSroka.v1'), p4 = read('PuszekP4Progress');
   var solved = 0; if (p2 && p2.solved) for (var k in p2.solved) if (p2.solved[k]) solved++;
   var txt = {
     p1: p1 ? '★ <b>' + stars(p1) + '</b> / 24' : 'Jeszcze nie grane',
     p3: p3 ? '★ <b>' + stars(p3) + '</b> / 39' : 'Jeszcze nie grane',
-    p2: p2 ? '🧩 <b>' + solved + '</b> / 15 pokoi' : 'Jeszcze nie grane'
+    p2: p2 ? '🧩 <b>' + solved + '</b> / 15 pokoi' : 'Jeszcze nie grane',
+    p4: p4 ? '★ <b>' + stars(p4) + '</b> / 48' : 'Jeszcze nie grane'
   };
   document.querySelectorAll('[data-prog]').forEach(function (el) { el.innerHTML = txt[el.dataset.prog]; });
 

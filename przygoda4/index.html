@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#8FD3F4">
+<title>Puszek i Persi: Ogród Babci Ludwiki</title>
+<style>
+@font-face { font-family: "Fredoka"; font-weight: 600; src: url(assets/fonts/fredoka-latin-600-normal.woff2) format("woff2"); unicode-range: U+0000-00FF; }
+@font-face { font-family: "Fredoka"; font-weight: 600; src: url(assets/fonts/fredoka-latin-ext-600-normal.woff2) format("woff2"); unicode-range: U+0100-024F; }
+@font-face { font-family: "Fredoka"; font-weight: 700; src: url(assets/fonts/fredoka-latin-700-normal.woff2) format("woff2"); unicode-range: U+0000-00FF; }
+@font-face { font-family: "Fredoka"; font-weight: 700; src: url(assets/fonts/fredoka-latin-ext-700-normal.woff2) format("woff2"); unicode-range: U+0100-024F; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #8FD3F4; }
+body { touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+canvas { display: block; touch-action: none; -webkit-tap-highlight-color: transparent; }
+#fontwarm { position: absolute; left: -999px; font-family: Fredoka; font-weight: 700; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Ogród Babci Ludwiki – gra w układanie owoców"></canvas>
+<div id="fontwarm">Ąę Fredoka <b>700</b></div>
+<script src="rules.js"></script>
+<script src="levels.js"></script>
+<script src="art.js"></script>
+<script src="audio.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
